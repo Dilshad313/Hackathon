@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
 import NotificationService from '../utils/notifications';
+import Navbar from '../components/common/Navbar';
 
 const ProfilePage = () => {
   const { user, updateUserProfile, logout } = useAuth();
@@ -145,21 +146,7 @@ const ProfilePage = () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <header className="bg-white shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
-          <h1 className="text-2xl font-bold text-gray-900">Profile Settings</h1>
-          <button 
-            onClick={() => {
-              if (window.confirm('Are you sure you want to logout?')) {
-                logout();
-              }
-            }}
-            className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg font-medium transition duration-300"
-          >
-            Logout
-          </button>
-        </div>
-      </header>
+      <Navbar title="Profile Settings" />
 
       <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <form onSubmit={onSubmit} className="space-y-8">

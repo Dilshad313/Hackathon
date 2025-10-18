@@ -15,7 +15,8 @@ const authReducer = (state, action) => {
         loading: false, 
         isAuthenticated: true, 
         user: action.payload.user,
-        token: action.payload.token 
+        token: action.payload.token,
+        error: null
       };
     case 'LOGIN_FAILURE':
       return { 
@@ -29,9 +30,11 @@ const authReducer = (state, action) => {
     case 'LOGOUT':
       return { 
         ...state, 
+        loading: false,
         isAuthenticated: false, 
         user: null,
-        token: null 
+        token: null,
+        error: null
       };
     case 'REGISTER_SUCCESS':
       return { 
@@ -61,7 +64,7 @@ const AuthProvider = ({ children }) => {
     isAuthenticated: false,
     user: null,
     token: localStorage.getItem('token'),
-    loading: false,
+    loading: true, // Start with loading true
     error: null
   });
 
@@ -71,15 +74,22 @@ const AuthProvider = ({ children }) => {
       const token = localStorage.getItem('token');
       if (token) {
         try {
+          // Set the token in API headers
+          api.setAuthToken(token);
           const response = await api.get('/users/profile');
           dispatch({
             type: 'LOGIN_SUCCESS',
             payload: { user: response.data, token }
           });
         } catch (error) {
+          console.error('Auth check failed:', error);
           localStorage.removeItem('token');
+          api.setAuthToken(null);
           dispatch({ type: 'LOGOUT' });
         }
+      } else {
+        // No token, stop loading
+        dispatch({ type: 'SET_LOADING', payload: false });
       }
     };
 
