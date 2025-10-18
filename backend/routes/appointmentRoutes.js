@@ -113,7 +113,13 @@ router.get('/my-appointments', auth, async (req, res) => {
     };
 
     if (status) {
-      query.status = status;
+      // Handle comma-separated statuses
+      const statuses = status.split(',').map(s => s.trim());
+      if (statuses.length > 1) {
+        query.status = { $in: statuses };
+      } else {
+        query.status = status;
+      }
     }
 
     if (dateRange) {
@@ -125,8 +131,15 @@ router.get('/my-appointments', auth, async (req, res) => {
     }
 
     const appointments = await Appointment.find(query)
-      .populate('doctorId', 'userId.firstName userId.lastName userId.username')
-      .populate('patientId', 'firstName lastName username')
+      .populate({
+        path: 'doctorId',
+        select: 'userId specialization consultationFee rating',
+        populate: {
+          path: 'userId',
+          select: 'firstName lastName username email profilePicture'
+        }
+      })
+      .populate('patientId', 'firstName lastName username email')
       .populate('hospitalId', 'name address')
       .sort({ appointmentDate: -1, startTime: -1 })
       .limit(limit * 1)

@@ -108,17 +108,61 @@ const AdminDashboard = () => {
           </div>
         </div>
 
+        {/* Quick Actions */}
+        <div className="bg-white rounded-lg shadow p-6 mb-8">
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-xl font-semibold text-gray-900">Quick Actions</h2>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <Link 
+              to="/admin/add-doctor" 
+              className="border-2 border-blue-500 bg-blue-50 rounded-lg p-4 text-center transition duration-300 hover:bg-blue-100 hover:border-blue-600"
+            >
+              <div className="text-3xl mb-2">➕</div>
+              <div className="font-semibold text-blue-800">Add Doctor</div>
+              <div className="text-sm text-blue-600 mt-1">Create new doctor account</div>
+            </Link>
+
+            <Link 
+              to="/admin/doctors" 
+              className="border border-green-200 bg-green-50 rounded-lg p-4 text-center transition duration-300 hover:bg-green-100"
+            >
+              <div className="text-2xl mb-2">👨‍⚕️</div>
+              <div className="font-medium text-green-800">Manage Doctors</div>
+              <div className="text-sm text-green-600 mt-1">View all doctors</div>
+            </Link>
+
+            <Link 
+              to="/admin/users" 
+              className="border border-purple-200 bg-purple-50 rounded-lg p-4 text-center transition duration-300 hover:bg-purple-100"
+            >
+              <div className="text-2xl mb-2">👥</div>
+              <div className="font-medium text-purple-800">Manage Users</div>
+              <div className="text-sm text-purple-600 mt-1">View all users</div>
+            </Link>
+
+            <Link 
+              to="/admin/hospitals" 
+              className="border border-orange-200 bg-orange-50 rounded-lg p-4 text-center transition duration-300 hover:bg-orange-100"
+            >
+              <div className="text-2xl mb-2">🏥</div>
+              <div className="font-medium text-orange-800">Manage Hospitals</div>
+              <div className="text-sm text-orange-600 mt-1">View all hospitals</div>
+            </Link>
+          </div>
+        </div>
+
         {/* Pending Approvals */}
         <div className="bg-white rounded-lg shadow p-6 mb-8">
           <h2 className="text-xl font-semibold text-gray-900 mb-4">Pending Approvals</h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <Link 
-              to="/admin/doctors" 
+              to="/admin/doctors?status=pending" 
               className="border border-blue-200 bg-blue-50 rounded-lg p-4 text-center transition duration-300 hover:bg-blue-100"
             >
               <div className="text-2xl mb-2">👨‍⚕️</div>
               <div className="font-medium text-blue-800">Doctors</div>
-              <div className="text-lg font-bold">{dashboardData.pendingDoctorApprovals}</div>
+              <div className="text-lg font-bold">{dashboardData.doctorStats?.pending || 0}</div>
             </Link>
             
             <Link 

@@ -29,10 +29,12 @@ const AppointmentsPage = () => {
       if (statusFilter) params.append('status', statusFilter);
 
       const response = await api.get(`/appointments/my-appointments?${params}`);
-      setAppointments(response.data.appointments);
+      console.log('Appointments response:', response.data); // Debug log
+      setAppointments(response.data.appointments || []);
     } catch (error) {
       NotificationService.error('Failed to load appointments');
       console.error('Error fetching appointments:', error);
+      console.error('Error details:', error.response?.data); // Debug log
     } finally {
       setLoading(false);
     }
@@ -176,7 +178,14 @@ const AppointmentsPage = () => {
               )}
             </div>
           ) : (
-            appointments.map(appointment => (
+            appointments.map(appointment => {
+              // Safety checks for nested data
+              const doctorName = appointment.doctorId?.userId 
+                ? `${appointment.doctorId.userId.firstName || ''} ${appointment.doctorId.userId.lastName || ''}`.trim()
+                : 'Doctor';
+              const specialization = appointment.doctorId?.specialization || 'N/A';
+              
+              return (
               <div key={appointment._id} className="bg-white rounded-lg shadow p-6">
                 <div className="flex flex-col md:flex-row md:items-center md:justify-between">
                   <div className="flex-1">
@@ -184,9 +193,9 @@ const AppointmentsPage = () => {
                       <span className="text-2xl">{getAppointmentIcon(appointment.consultationType)}</span>
                       <div>
                         <h3 className="text-lg font-semibold text-gray-900">
-                          {appointment.doctorId.userId.firstName} {appointment.doctorId.userId.lastName}
+                          Dr. {doctorName}
                         </h3>
-                        <p className="text-blue-600 font-medium">{appointment.doctorId.specialization}</p>
+                        <p className="text-blue-600 font-medium">{specialization}</p>
                       </div>
                     </div>
                     
@@ -260,7 +269,8 @@ const AppointmentsPage = () => {
                   </div>
                 </div>
               </div>
-            ))
+              );
+            })
           )}
         </div>
       </main>

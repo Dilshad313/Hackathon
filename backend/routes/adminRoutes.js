@@ -3,7 +3,7 @@ const { adminAuth } = require('../middleware/auth');
 const User = require('../models/User');
 const Doctor = require('../models/Doctor');
 const Hospital = require('../models/Hospital');
-const Course = require('../models/Course');
+const { Course, Enrollment } = require('../models/Course');
 const { ForumPost } = require('../models/Forum');
 const Appointment = require('../models/Appointment');
 const Notification = require('../models/Notification');
@@ -11,7 +11,7 @@ const Notification = require('../models/Notification');
 const router = express.Router();
 
 // @route   GET api/admin/dashboard
-// @desc    Get admin dashboard data
+// @desc    Get admin dashboard data with comprehensive statistics
 // @access  Private - Admin
 router.get('/dashboard', adminAuth, async (req, res) => {
   try {
@@ -21,29 +21,99 @@ router.get('/dashboard', adminAuth, async (req, res) => {
       hospitalCount,
       courseCount,
       appointmentCount,
-      forumPostCount
+      forumPostCount,
+      pendingDoctors,
+      approvedDoctors,
+      rejectedDoctors,
+      pendingHospitals,
+      activeUsers,
+      inactiveUsers
     ] = await Promise.all([
       User.countDocuments(),
       Doctor.countDocuments(),
       Hospital.countDocuments(),
       Course.countDocuments(),
       Appointment.countDocuments(),
-      ForumPost.countDocuments()
+      ForumPost.countDocuments(),
+      Doctor.countDocuments({ adminApprovalStatus: 'pending' }),
+      Doctor.countDocuments({ adminApprovalStatus: 'approved' }),
+      Doctor.countDocuments({ adminApprovalStatus: 'rejected' }),
+      Hospital.countDocuments({ adminApprovalStatus: 'pending' }),
+      User.countDocuments({ isActive: true }),
+      User.countDocuments({ isActive: false })
     ]);
 
+    // Get recent data
+    const recentUsers = await User.find()
+      .sort({ createdAt: -1 })
+      .limit(5)
+      .select('username email role createdAt isActive');
+
+    const recentDoctors = await Doctor.find()
+      .populate('userId', 'username email firstName lastName')
+      .sort({ createdAt: -1 })
+      .limit(5)
+      .select('specialization adminApprovalStatus createdAt');
+
+    const recentAppointments = await Appointment.find()
+      .populate('patientId', 'username email')
+      .populate('doctorId')
+      .sort({ createdAt: -1 })
+      .limit(5);
+
+    // Calculate growth statistics (last 30 days)
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+    const newUsersLastMonth = await User.countDocuments({ 
+      createdAt: { $gte: thirtyDaysAgo } 
+    });
+
+    const newDoctorsLastMonth = await Doctor.countDocuments({ 
+      createdAt: { $gte: thirtyDaysAgo } 
+    });
+
     const dashboardData = {
+      // Total counts
       totalUsers: userCount,
       totalDoctors: doctorCount,
       totalHospitals: hospitalCount,
       totalCourses: courseCount,
       totalAppointments: appointmentCount,
       totalForumPosts: forumPostCount,
-      recentUsers: await User.find().sort({ createdAt: -1 }).limit(5).select('username email role createdAt'),
-      recentAppointments: await Appointment.find().populate('patientId doctorId').sort({ createdAt: -1 }).limit(5)
+      
+      // User statistics
+      userStats: {
+        active: activeUsers,
+        inactive: inactiveUsers,
+        newThisMonth: newUsersLastMonth
+      },
+      
+      // Doctor statistics
+      doctorStats: {
+        pending: pendingDoctors,
+        approved: approvedDoctors,
+        rejected: rejectedDoctors,
+        newThisMonth: newDoctorsLastMonth
+      },
+      
+      // Hospital statistics
+      hospitalStats: {
+        pending: pendingHospitals
+      },
+      
+      // Recent data
+      recentUsers,
+      recentDoctors,
+      recentAppointments,
+      
+      // Timestamp
+      generatedAt: new Date()
     };
 
     res.json(dashboardData);
   } catch (error) {
+    console.error('Dashboard error:', error);
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 });
@@ -105,27 +175,260 @@ router.put('/users/:id/toggle-status', adminAuth, async (req, res) => {
 });
 
 // @route   GET api/admin/doctors
-// @desc    Get all doctors (pending approval)
+// @desc    Get all doctors with filtering and search
 // @access  Private - Admin
 router.get('/doctors', adminAuth, async (req, res) => {
   try {
-    const { adminApprovalStatus = 'pending', page = 1, limit = 10 } = req.query;
+    const { adminApprovalStatus, page = 1, limit = 10, search, specialization } = req.query;
 
-    const doctors = await Doctor.find({ adminApprovalStatus })
-      .populate('userId', 'username email firstName lastName')
+    let query = {};
+    
+    // Filter by approval status
+    if (adminApprovalStatus) {
+      query.adminApprovalStatus = adminApprovalStatus;
+    }
+    
+    // Filter by specialization
+    if (specialization) {
+      query.specialization = { $regex: specialization, $options: 'i' };
+    }
+
+    // Search functionality
+    let doctors;
+    if (search) {
+      // Search in user details
+      const users = await User.find({
+        $or: [
+          { username: { $regex: search, $options: 'i' } },
+          { email: { $regex: search, $options: 'i' } },
+          { firstName: { $regex: search, $options: 'i' } },
+          { lastName: { $regex: search, $options: 'i' } }
+        ]
+      }).select('_id');
+      
+      const userIds = users.map(u => u._id);
+      query.$or = [
+        { userId: { $in: userIds } },
+        { licenseNumber: { $regex: search, $options: 'i' } },
+        { specialization: { $regex: search, $options: 'i' } }
+      ];
+    }
+
+    doctors = await Doctor.find(query)
+      .populate('userId', 'username email firstName lastName phone profilePicture')
       .sort({ createdAt: -1 })
       .limit(limit * 1)
       .skip((page - 1) * limit);
 
-    const total = await Doctor.countDocuments({ adminApprovalStatus });
+    const total = await Doctor.countDocuments(query);
 
     res.json({
       doctors,
       totalPages: Math.ceil(total / limit),
-      currentPage: page,
+      currentPage: parseInt(page),
       total
     });
   } catch (error) {
+    console.error('Get doctors error:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+// @route   POST api/admin/doctors/add
+// @desc    Admin adds a new doctor directly
+// @access  Private - Admin
+router.post('/doctors/add', adminAuth, async (req, res) => {
+  try {
+    const {
+      email,
+      username,
+      password,
+      firstName,
+      lastName,
+      phone,
+      licenseNumber,
+      specialization,
+      qualifications,
+      yearsOfExperience,
+      bio,
+      consultationFee,
+      languages,
+      consultationTypes,
+      availability,
+      workingHours
+    } = req.body;
+
+    // Validate required fields
+    if (!email || !username || !password || !licenseNumber || !specialization) {
+      return res.status(400).json({ 
+        message: 'Please provide all required fields: email, username, password, licenseNumber, specialization' 
+      });
+    }
+
+    // Check if user already exists
+    let existingUser = await User.findOne({ email });
+    if (existingUser) {
+      return res.status(400).json({ message: 'User with this email already exists' });
+    }
+
+    existingUser = await User.findOne({ username });
+    if (existingUser) {
+      return res.status(400).json({ message: 'Username already taken' });
+    }
+
+    // Check if license number already exists
+    const existingDoctor = await Doctor.findOne({ licenseNumber });
+    if (existingDoctor) {
+      return res.status(400).json({ message: 'Doctor with this license number already exists' });
+    }
+
+    // Create user account
+    const user = new User({
+      email,
+      username,
+      password,
+      firstName,
+      lastName,
+      phone,
+      role: 'doctor',
+      isActive: true,
+      isEmailVerified: true
+    });
+
+    await user.save();
+
+    // Create doctor profile
+    const doctor = new Doctor({
+      userId: user._id,
+      licenseNumber,
+      specialization,
+      qualifications: qualifications || [],
+      yearsOfExperience: yearsOfExperience || 0,
+      bio: bio || '',
+      consultationFee: consultationFee || { amount: 0, currency: 'USD' },
+      languages: languages || ['English'],
+      consultationTypes: consultationTypes || ['video', 'audio'],
+      availability: availability || {},
+      workingHours: workingHours || { startTime: '09:00', endTime: '17:00' },
+      adminApprovalStatus: 'approved',
+      approvalDate: new Date(),
+      isAvailable: true
+    });
+
+    await doctor.save();
+
+    // Populate user details for response
+    await doctor.populate('userId', 'username email firstName lastName phone');
+
+    res.status(201).json({
+      message: 'Doctor added successfully',
+      doctor,
+      user: {
+        id: user._id,
+        email: user.email,
+        username: user.username,
+        role: user.role
+      }
+    });
+  } catch (error) {
+    console.error('Add doctor error:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+// @route   GET api/admin/doctors/:id
+// @desc    Get single doctor details
+// @access  Private - Admin
+router.get('/doctors/:id', adminAuth, async (req, res) => {
+  try {
+    const doctor = await Doctor.findById(req.params.id)
+      .populate('userId', 'username email firstName lastName phone profilePicture dateOfBirth gender address');
+
+    if (!doctor) {
+      return res.status(404).json({ message: 'Doctor not found' });
+    }
+
+    res.json(doctor);
+  } catch (error) {
+    console.error('Get doctor error:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+// @route   PUT api/admin/doctors/:id
+// @desc    Update doctor details
+// @access  Private - Admin
+router.put('/doctors/:id', adminAuth, async (req, res) => {
+  try {
+    const {
+      licenseNumber,
+      specialization,
+      qualifications,
+      yearsOfExperience,
+      bio,
+      consultationFee,
+      languages,
+      consultationTypes,
+      availability,
+      workingHours,
+      isAvailable
+    } = req.body;
+
+    const doctor = await Doctor.findById(req.params.id);
+    if (!doctor) {
+      return res.status(404).json({ message: 'Doctor not found' });
+    }
+
+    // Check if license number is being changed and if it's already taken
+    if (licenseNumber && licenseNumber !== doctor.licenseNumber) {
+      const existingDoctor = await Doctor.findOne({ licenseNumber });
+      if (existingDoctor) {
+        return res.status(400).json({ message: 'License number already in use' });
+      }
+      doctor.licenseNumber = licenseNumber;
+    }
+
+    // Update fields
+    if (specialization) doctor.specialization = specialization;
+    if (qualifications) doctor.qualifications = qualifications;
+    if (yearsOfExperience !== undefined) doctor.yearsOfExperience = yearsOfExperience;
+    if (bio) doctor.bio = bio;
+    if (consultationFee) doctor.consultationFee = consultationFee;
+    if (languages) doctor.languages = languages;
+    if (consultationTypes) doctor.consultationTypes = consultationTypes;
+    if (availability) doctor.availability = availability;
+    if (workingHours) doctor.workingHours = workingHours;
+    if (isAvailable !== undefined) doctor.isAvailable = isAvailable;
+
+    await doctor.save();
+    await doctor.populate('userId', 'username email firstName lastName phone');
+
+    res.json({ message: 'Doctor updated successfully', doctor });
+  } catch (error) {
+    console.error('Update doctor error:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+// @route   DELETE api/admin/doctors/:id
+// @desc    Delete doctor
+// @access  Private - Admin
+router.delete('/doctors/:id', adminAuth, async (req, res) => {
+  try {
+    const doctor = await Doctor.findById(req.params.id);
+    if (!doctor) {
+      return res.status(404).json({ message: 'Doctor not found' });
+    }
+
+    // Delete doctor profile
+    await Doctor.findByIdAndDelete(req.params.id);
+
+    // Update user role back to patient or delete user
+    await User.findByIdAndUpdate(doctor.userId, { role: 'patient' });
+
+    res.json({ message: 'Doctor deleted successfully' });
+  } catch (error) {
+    console.error('Delete doctor error:', error);
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 });

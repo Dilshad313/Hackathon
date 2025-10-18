@@ -5,7 +5,7 @@ const { GoogleGenerativeAI } = require('@google/generative-ai');
 const AssessmentResult = require('../models/Assessment');
 const Appointment = require('../models/Appointment');
 const Prescription = require('../models/Prescription');
-const Course = require('../models/Course');
+const { Course } = require('../models/Course');
 
 const router = express.Router();
 

@@ -135,11 +135,18 @@ const AppointmentBooking = () => {
     }
     
     try {
+      // Prepare booking data with proper formatting
       const bookingData = {
-        ...bookingForm,
         doctorId,
-        appointmentDate: new Date(`${bookingForm.appointmentDate}T00:00:00`).toISOString()
+        appointmentDate: new Date(`${bookingForm.appointmentDate}T00:00:00`).toISOString(),
+        startTime: bookingForm.startTime,
+        endTime: bookingForm.endTime,
+        consultationType: bookingForm.consultationType,
+        reason: bookingForm.reason || '',
+        hospitalId: bookingForm.hospitalId || null
       };
+      
+      console.log('Booking data:', bookingData); // Debug log
       
       const response = await api.post('/appointments/book', bookingData);
       NotificationService.success('Appointment booked successfully!');
@@ -147,7 +154,9 @@ const AppointmentBooking = () => {
       // Navigate to appointments page
       navigate('/appointments');
     } catch (error) {
-      NotificationService.error(error.response?.data?.message || 'Failed to book appointment');
+      console.error('Booking error:', error.response?.data); // Debug log
+      const errorMessage = error.response?.data?.details || error.response?.data?.message || 'Failed to book appointment';
+      NotificationService.error(errorMessage);
     }
   };
 

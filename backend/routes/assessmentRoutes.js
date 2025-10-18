@@ -1,7 +1,7 @@
 const express = require('express');
 const { auth } = require('../middleware/auth');
 const AssessmentResult = require('../models/Assessment');
-const Course = require('../models/Course');
+const { Course } = require('../models/Course');
 const emailService = require('../utils/emailService');
 const { GoogleGenerativeAI } = require('@google/generative-ai');
 

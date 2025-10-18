@@ -68,11 +68,15 @@ const validateDoctorRegistration = (req, res, next) => {
 const validateAppointment = (req, res, next) => {
   const schema = Joi.object({
     doctorId: Joi.string().required(),
-    appointmentDate: Joi.date().required(),
+    appointmentDate: Joi.alternatives().try(
+      Joi.date(),
+      Joi.string().isoDate()
+    ).required(),
     startTime: Joi.string().required(),
     endTime: Joi.string().required(),
     consultationType: Joi.string().valid('video', 'audio', 'in-person', 'chat').required(),
-    reason: Joi.string().max(500)
+    reason: Joi.string().max(500).allow(''),
+    hospitalId: Joi.string().allow('', null).optional()
   });
 
   const { error } = schema.validate(req.body);

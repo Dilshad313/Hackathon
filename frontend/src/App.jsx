@@ -37,6 +37,8 @@ import HospitalProfile from './pages/HospitalProfile';
 
 // Admin pages
 import AdminDashboard from './pages/AdminDashboard';
+import AddDoctor from './pages/AddDoctor';
+import AdminDoctors from './pages/AdminDoctors';
 
 function App() {
   return (
@@ -222,6 +224,22 @@ function App() {
                 element={
                   <PrivateRoute allowedRoles={['admin']}>
                     <AdminDashboard />
+                  </PrivateRoute>
+                } 
+              />
+              <Route 
+                path="/admin/add-doctor" 
+                element={
+                  <PrivateRoute allowedRoles={['admin']}>
+                    <AddDoctor />
+                  </PrivateRoute>
+                } 
+              />
+              <Route 
+                path="/admin/doctors" 
+                element={
+                  <PrivateRoute allowedRoles={['admin']}>
+                    <AdminDoctors />
                   </PrivateRoute>
                 } 
               />

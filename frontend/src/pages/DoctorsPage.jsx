@@ -24,15 +24,25 @@ const DoctorsPage = () => {
     try {
       const params = new URLSearchParams();
       params.append('page', page);
+      params.append('limit', 12);
       
       if (searchTerm) params.append('search', searchTerm);
       if (specialization) params.append('specialization', specialization);
-      if (rating) params.append('rating', rating);
+      if (rating) params.append('minRating', rating);
       if (consultationType) params.append('consultationType', consultationType);
 
-      const response = await api.get(`/doctors/search?${params}`);
-      setDoctors(response.data.doctors);
-      setTotalPages(response.data.totalPages);
+      // Try doctors search endpoint first, fallback to admin endpoint with approved filter
+      let response;
+      try {
+        response = await api.get(`/doctors/search?${params}`);
+      } catch (err) {
+        // Fallback to admin endpoint with approved filter
+        params.append('adminApprovalStatus', 'approved');
+        response = await api.get(`/admin/doctors?${params}`);
+      }
+      
+      setDoctors(response.data.doctors || []);
+      setTotalPages(response.data.totalPages || 1);
     } catch (error) {
       NotificationService.error('Failed to load doctors');
       console.error('Error fetching doctors:', error);

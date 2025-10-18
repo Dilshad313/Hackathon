@@ -1,0 +1,603 @@
+{
+  "info": {
+    "name": "SoulSync Admin API",
+    "description": "Admin endpoints for SoulSync application",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:5000",
+      "type": "string"
+    },
+    {
+      "key": "adminToken",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Authentication",
+      "item": [
+        {
+          "name": "Admin Login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.collectionVariables.set('adminToken', jsonData.token);",
+                  "    pm.environment.set('adminToken', jsonData.token);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"admin@gmail.com\",\n  \"password\": \"password\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/users/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "users", "login"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Dashboard",
+      "item": [
+        {
+          "name": "Get Admin Dashboard",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-auth-token",
+                "value": "{{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/dashboard",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "dashboard"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "User Management",
+      "item": [
+        {
+          "name": "Get All Users",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-auth-token",
+                "value": "{{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/users?page=1&limit=10",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "users"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Toggle User Status",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "x-auth-token",
+                "value": "{{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/users/:userId/toggle-status",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "users", ":userId", "toggle-status"],
+              "variable": [
+                {
+                  "key": "userId",
+                  "value": ""
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Doctor Management",
+      "item": [
+        {
+          "name": "Add New Doctor",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "x-auth-token",
+                "value": "{{adminToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"doctor@example.com\",\n  \"username\": \"dr_john\",\n  \"password\": \"SecurePass123!\",\n  \"firstName\": \"John\",\n  \"lastName\": \"Doe\",\n  \"phone\": \"+1234567890\",\n  \"licenseNumber\": \"MD12345\",\n  \"specialization\": \"Psychiatry\",\n  \"qualifications\": [\n    {\n      \"degree\": \"MD\",\n      \"institution\": \"Harvard Medical School\",\n      \"year\": 2015\n    }\n  ],\n  \"yearsOfExperience\": 8,\n  \"bio\": \"Experienced psychiatrist\",\n  \"consultationFee\": {\n    \"amount\": 150,\n    \"currency\": \"USD\"\n  },\n  \"languages\": [\"English\", \"Spanish\"],\n  \"consultationTypes\": [\"video\", \"audio\"],\n  \"workingHours\": {\n    \"startTime\": \"09:00\",\n    \"endTime\": \"17:00\"\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/doctors/add",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "doctors", "add"]
+            }
+          }
+        },
+        {
+          "name": "Get All Doctors",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-auth-token",
+                "value": "{{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/doctors?page=1&limit=10",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "doctors"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                },
+                {
+                  "key": "adminApprovalStatus",
+                  "value": "approved",
+                  "disabled": true
+                },
+                {
+                  "key": "search",
+                  "value": "",
+                  "disabled": true
+                },
+                {
+                  "key": "specialization",
+                  "value": "",
+                  "disabled": true
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Pending Doctors",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-auth-token",
+                "value": "{{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/doctors?adminApprovalStatus=pending",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "doctors"],
+              "query": [
+                {
+                  "key": "adminApprovalStatus",
+                  "value": "pending"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Single Doctor",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-auth-token",
+                "value": "{{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/doctors/:doctorId",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "doctors", ":doctorId"],
+              "variable": [
+                {
+                  "key": "doctorId",
+                  "value": ""
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Update Doctor",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "x-auth-token",
+                "value": "{{adminToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"specialization\": \"Clinical Psychology\",\n  \"consultationFee\": {\n    \"amount\": 200,\n    \"currency\": \"USD\"\n  },\n  \"isAvailable\": true\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/doctors/:doctorId",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "doctors", ":doctorId"],
+              "variable": [
+                {
+                  "key": "doctorId",
+                  "value": ""
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Delete Doctor",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "x-auth-token",
+                "value": "{{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/doctors/:doctorId",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "doctors", ":doctorId"],
+              "variable": [
+                {
+                  "key": "doctorId",
+                  "value": ""
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Approve Doctor",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "x-auth-token",
+                "value": "{{adminToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"approved\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/doctors/:doctorId/approve",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "doctors", ":doctorId", "approve"],
+              "variable": [
+                {
+                  "key": "doctorId",
+                  "value": ""
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Reject Doctor",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "x-auth-token",
+                "value": "{{adminToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"rejected\",\n  \"rejectionReason\": \"Incomplete documentation\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/doctors/:doctorId/approve",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "doctors", ":doctorId", "approve"],
+              "variable": [
+                {
+                  "key": "doctorId",
+                  "value": ""
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Hospital Management",
+      "item": [
+        {
+          "name": "Get Pending Hospitals",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-auth-token",
+                "value": "{{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/hospitals?adminApprovalStatus=pending",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "hospitals"],
+              "query": [
+                {
+                  "key": "adminApprovalStatus",
+                  "value": "pending"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Approve Hospital",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "x-auth-token",
+                "value": "{{adminToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"approved\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/hospitals/:hospitalId/approve",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "hospitals", ":hospitalId", "approve"],
+              "variable": [
+                {
+                  "key": "hospitalId",
+                  "value": ""
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Course Management",
+      "item": [
+        {
+          "name": "Get Pending Courses",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-auth-token",
+                "value": "{{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/courses?adminApprovalStatus=pending",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "courses"],
+              "query": [
+                {
+                  "key": "adminApprovalStatus",
+                  "value": "pending"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Approve Course",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "x-auth-token",
+                "value": "{{adminToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"approved\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/courses/:courseId/approve",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "courses", ":courseId", "approve"],
+              "variable": [
+                {
+                  "key": "courseId",
+                  "value": ""
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Forum Moderation",
+      "item": [
+        {
+          "name": "Get Forum Posts",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "x-auth-token",
+                "value": "{{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/forum-posts?status=active",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "forum-posts"],
+              "query": [
+                {
+                  "key": "status",
+                  "value": "active"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Toggle Post Status",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "x-auth-token",
+                "value": "{{adminToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"locked\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/forum-posts/:postId/toggle-status",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "forum-posts", ":postId", "toggle-status"],
+              "variable": [
+                {
+                  "key": "postId",
+                  "value": ""
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Delete Forum Post",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "x-auth-token",
+                "value": "{{adminToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/forum-posts/:postId",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "forum-posts", ":postId"],
+              "variable": [
+                {
+                  "key": "postId",
+                  "value": ""
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Notifications",
+      "item": [
+        {
+          "name": "Send Notification to All Users",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "x-auth-token",
+                "value": "{{adminToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"System Announcement\",\n  \"message\": \"Welcome to SoulSync!\",\n  \"targetUsers\": \"all\",\n  \"type\": \"admin-announcement\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/notifications/send",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "notifications", "send"]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}
