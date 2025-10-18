@@ -103,15 +103,40 @@ const AssessmentResult = () => {
           </div>
         </div>
 
-        {/* Recommendations */}
+        {/* AI-Powered Recommendations */}
         {result.recommendations && result.recommendations.length > 0 && (
-          <div className="bg-white rounded-lg shadow p-6 mb-8">
-            <h3 className="text-xl font-semibold text-gray-900 mb-4">Recommendations</h3>
-            <ul className="list-disc list-inside space-y-2">
-              {result.recommendations.map((rec, index) => (
-                <li key={index} className="text-gray-700">{rec}</li>
-              ))}
-            </ul>
+          <div className="bg-gradient-to-r from-purple-50 to-blue-50 border-2 border-purple-200 rounded-lg shadow-lg p-6 mb-8">
+            <div className="flex items-start mb-4">
+              <div className="flex-shrink-0">
+                <span className="text-3xl">🤖</span>
+              </div>
+              <div className="ml-3 flex-1">
+                <h3 className="text-xl font-bold text-purple-900 mb-2">
+                  Personalized AI Recommendations
+                </h3>
+                <p className="text-sm text-purple-700 mb-4">
+                  Based on your specific responses, here are tailored recommendations to support your wellbeing:
+                </p>
+              </div>
+            </div>
+            <div className="bg-white rounded-lg p-4">
+              <ul className="space-y-3">
+                {result.recommendations.map((rec, index) => (
+                  <li key={index} className="flex items-start">
+                    <span className="flex-shrink-0 w-6 h-6 bg-purple-600 text-white rounded-full flex items-center justify-center text-sm font-medium mr-3 mt-0.5">
+                      {index + 1}
+                    </span>
+                    <span className="text-gray-800 leading-relaxed">{rec}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+            <div className="mt-4 p-3 bg-purple-100 rounded-lg">
+              <p className="text-sm text-purple-900">
+                <strong>💡 Remember:</strong> These recommendations are personalized based on your assessment. 
+                Take them one step at a time, and don't hesitate to seek professional support if needed.
+              </p>
+            </div>
           </div>
         )}
 

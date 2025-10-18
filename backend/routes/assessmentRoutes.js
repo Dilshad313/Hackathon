@@ -3,8 +3,12 @@ const { auth } = require('../middleware/auth');
 const AssessmentResult = require('../models/Assessment');
 const Course = require('../models/Course');
 const emailService = require('../utils/emailService');
+const { GoogleGenerativeAI } = require('@google/generative-ai');
 
 const router = express.Router();
+
+// Initialize Google AI client
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || 'dummy-key');
 
 // @route   GET api/assessments/types
 // @desc    Get available assessment types
@@ -53,11 +57,19 @@ router.get('/types', auth, (req, res) => {
 // @access  Private
 router.post('/submit', auth, async (req, res) => {
   try {
+    console.log('=== Assessment Submission Started ===');
+    console.log('User ID:', req.user?.id);
+    console.log('Request body:', JSON.stringify(req.body, null, 2));
+    
     const { assessmentType, assessmentName, answers } = req.body;
 
     if (!assessmentType || !answers || !Array.isArray(answers) || answers.length === 0) {
+      console.log('Validation failed: Invalid assessment data');
       return res.status(400).json({ message: 'Invalid assessment data' });
     }
+
+    console.log('Assessment type:', assessmentType);
+    console.log('Number of answers:', answers.length);
 
     // Calculate total score based on answers
     let totalScore = 0;
@@ -66,6 +78,8 @@ router.post('/submit', auth, async (req, res) => {
         totalScore += answer.score;
       }
     });
+    
+    console.log('Total score calculated:', totalScore);
 
     // Determine severity based on assessment type and score
     let severity = 'normal';
@@ -137,7 +151,67 @@ router.post('/submit', auth, async (req, res) => {
         break;
     }
 
+    // Generate AI-powered personalized recommendations
+    console.log('Generating AI recommendations...');
+    let aiRecommendations = [];
+    try {
+      const answersSummary = answers.map((a, i) => `Q${i + 1}: ${a.questionText} - ${a.answer} (Score: ${a.score})`).join('\n');
+      
+      const recommendationPrompt = `You are a compassionate mental health AI assistant. A user just completed a ${assessmentName} assessment.
+
+Assessment Results:
+- Type: ${assessmentType}
+- Total Score: ${totalScore}/${maxScore}
+- Severity: ${severity}
+- Answers:
+${answersSummary}
+
+Based on these specific responses, provide 5-7 personalized, actionable recommendations. Be:
+1. Specific to their answers (not generic)
+2. Supportive and encouraging
+3. Practical and actionable
+4. Appropriate for ${severity} severity level
+
+Format as a simple numbered list. Keep each recommendation to 1-2 sentences.`;
+
+      const model = genAI.getGenerativeModel({ 
+        model: "gemini-2.0-flash-exp"
+      });
+
+      const result = await model.generateContent(recommendationPrompt);
+      const response = await result.response;
+      const aiResponse = response.text();
+      
+      // Parse AI response into array of recommendations
+      aiRecommendations = aiResponse
+        .split('\n')
+        .filter(line => line.trim().match(/^\d+\./)) // Lines starting with numbers
+        .map(line => line.replace(/^\d+\.\s*/, '').trim()) // Remove numbering
+        .filter(line => line.length > 0);
+      
+      console.log('AI recommendations generated:', aiRecommendations.length);
+      
+      // Combine basic recommendations with AI recommendations
+      if (aiRecommendations.length > 0) {
+        recommendations = [...aiRecommendations, ...recommendations];
+      }
+    } catch (aiError) {
+      console.log('AI recommendations failed, using basic recommendations:', aiError.message);
+      // Continue with basic recommendations if AI fails
+    }
+
     // Create assessment result
+    console.log('Creating assessment result with data:', {
+      userId: req.user.id,
+      assessmentType,
+      assessmentName,
+      totalScore,
+      maxScore,
+      severity,
+      answersCount: answers.length,
+      recommendationsCount: recommendations.length
+    });
+    
     const assessmentResult = new AssessmentResult({
       userId: req.user.id,
       assessmentType,
@@ -150,59 +224,69 @@ router.post('/submit', auth, async (req, res) => {
       recommendations
     });
 
+    console.log('Attempting to save assessment...');
     await assessmentResult.save();
+    console.log('Assessment saved successfully!');
+    
+    console.log('Assessment saved successfully:', assessmentResult._id);
 
-    // Find relevant courses based on assessment results
+    // Find relevant courses based on assessment results (optional - don't fail if courses don't exist)
     let relatedCourses = [];
-    switch (assessmentType) {
-      case 'PHQ-9':
-        relatedCourses = await Course.find({
-          category: 'depression',
-          isPublished: true,
-          adminApprovalStatus: 'approved'
-        }).limit(3);
-        break;
-      case 'GAD-7':
-        relatedCourses = await Course.find({
-          category: 'anxiety',
-          isPublished: true,
-          adminApprovalStatus: 'approved'
-        }).limit(3);
-        break;
-      default:
-        relatedCourses = await Course.find({
-          isPublished: true,
-          adminApprovalStatus: 'approved'
-        }).limit(3);
+    try {
+      switch (assessmentType) {
+        case 'PHQ-9':
+          relatedCourses = await Course.find({
+            category: 'depression',
+            isPublished: true,
+            adminApprovalStatus: 'approved'
+          }).limit(3);
+          break;
+        case 'GAD-7':
+          relatedCourses = await Course.find({
+            category: 'anxiety',
+            isPublished: true,
+            adminApprovalStatus: 'approved'
+          }).limit(3);
+          break;
+        default:
+          relatedCourses = await Course.find({
+            isPublished: true,
+            adminApprovalStatus: 'approved'
+          }).limit(3);
+      }
+
+      // Link courses to assessment
+      if (relatedCourses.length > 0) {
+        assessmentResult.relatedCourseIds = relatedCourses.map(course => course._id);
+        await assessmentResult.save();
+      }
+    } catch (courseError) {
+      console.log('Could not fetch related courses:', courseError.message);
+      // Continue without courses
     }
 
-    // Link courses to assessment
-    if (relatedCourses.length > 0) {
-      assessmentResult.relatedCourseIds = relatedCourses.map(course => course._id);
-      await assessmentResult.save();
+    // Create notification for user (optional - don't fail if notification fails)
+    try {
+      const Notification = require('../models/Notification');
+      const notification = new Notification({
+        userId: req.user.id,
+        title: 'Assessment Results Ready',
+        message: `Your ${assessmentName} results are ready. Your score indicates ${severity} symptoms.`,
+        type: 'assessment-result',
+        data: { assessmentId: assessmentResult._id }
+      });
+      await notification.save();
+    } catch (notificationError) {
+      console.log('Could not create notification:', notificationError.message);
+      // Continue without notification
     }
-
-    // Send email with results if email is verified
-    if (req.user.isEmailVerified) {
-      // await emailService.sendAssessmentResult(assessmentResult, req.user);
-    }
-
-    // Create notification for user
-    const Notification = require('../models/Notification');
-    const notification = new Notification({
-      userId: req.user.id,
-      title: 'Assessment Results Ready',
-      message: `Your ${assessmentName} results are ready. Your score indicates ${severity} symptoms.`,
-      type: 'assessment-result',
-      data: { assessmentId: assessmentResult._id }
-    });
-    await notification.save();
 
     res.status(201).json({
       ...assessmentResult.toObject(),
       relatedCourses
     });
   } catch (error) {
+    console.error('Assessment submission error:', error);
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 });
@@ -241,35 +325,6 @@ router.get('/my-results', auth, async (req, res) => {
       currentPage: page,
       total
     });
-  } catch (error) {
-    res.status(500).json({ message: 'Server error', error: error.message });
-  }
-});
-
-// @route   GET api/assessments/:id
-// @desc    Get assessment result by ID
-// @access  Private
-router.get('/:id', auth, async (req, res) => {
-  try {
-    const result = await AssessmentResult.findById(req.params.id);
-
-    if (!result) {
-      return res.status(404).json({ message: 'Assessment result not found' });
-    }
-
-    if (!result.userId.equals(req.user.id)) {
-      return res.status(403).json({ message: 'Not authorized to view this assessment' });
-    }
-
-    // Populate related courses
-    if (result.relatedCourseIds && result.relatedCourseIds.length > 0) {
-      const relatedCourses = await Course.find({
-        _id: { $in: result.relatedCourseIds }
-      });
-      result.relatedCourses = relatedCourses;
-    }
-
-    res.json(result);
   } catch (error) {
     res.status(500).json({ message: 'Server error', error: error.message });
   }
@@ -315,9 +370,11 @@ router.get('/questions/:type', auth, (req, res) => {
   try {
     const assessmentType = req.params.type;
     let questions = [];
+    let name = '';
 
     switch (assessmentType) {
       case 'PHQ-9':
+        name = 'Patient Health Questionnaire (PHQ-9)';
         questions = [
           { id: '1', text: 'Little interest or pleasure in doing things', options: ['Not at all', 'Several days', 'More than half the days', 'Nearly every day'] },
           { id: '2', text: 'Feeling down, depressed, or hopeless', options: ['Not at all', 'Several days', 'More than half the days', 'Nearly every day'] },
@@ -332,6 +389,7 @@ router.get('/questions/:type', auth, (req, res) => {
         break;
         
       case 'GAD-7':
+        name = 'Generalized Anxiety Disorder (GAD-7)';
         questions = [
           { id: '1', text: 'Feeling nervous, anxious, or on edge', options: ['Not at all', 'Several days', 'More than half the days', 'Nearly every day'] },
           { id: '2', text: 'Not being able to stop or control worrying', options: ['Not at all', 'Several days', 'More than half the days', 'Nearly every day'] },
@@ -347,7 +405,36 @@ router.get('/questions/:type', auth, (req, res) => {
         return res.status(400).json({ message: 'Invalid assessment type' });
     }
 
-    res.json({ type: assessmentType, questions });
+    res.json({ type: assessmentType, name, questions });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+// @route   GET api/assessments/:id
+// @desc    Get assessment result by ID
+// @access  Private
+router.get('/:id', auth, async (req, res) => {
+  try {
+    const result = await AssessmentResult.findById(req.params.id);
+
+    if (!result) {
+      return res.status(404).json({ message: 'Assessment result not found' });
+    }
+
+    if (!result.userId.equals(req.user.id)) {
+      return res.status(403).json({ message: 'Not authorized to view this assessment' });
+    }
+
+    // Populate related courses
+    if (result.relatedCourseIds && result.relatedCourseIds.length > 0) {
+      const relatedCourses = await Course.find({
+        _id: { $in: result.relatedCourseIds }
+      });
+      result.relatedCourses = relatedCourses;
+    }
+
+    res.json(result);
   } catch (error) {
     res.status(500).json({ message: 'Server error', error: error.message });
   }

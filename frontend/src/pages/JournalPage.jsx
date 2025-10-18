@@ -1,13 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
 import NotificationService from '../utils/notifications';
 
 const JournalPage = () => {
+  const { logout } = useAuth();
   const [entries, setEntries] = useState([]);
   const [insights, setInsights] = useState(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('entries');
+  const [aiAnalysis, setAiAnalysis] = useState(null);
+  const [analyzingAI, setAnalyzingAI] = useState(false);
   const [newEntry, setNewEntry] = useState({
     title: '',
     content: '',
@@ -62,6 +66,7 @@ const JournalPage = () => {
         tags: '',
         sharedWithDoctor: false
       });
+      setAiAnalysis(null); // Clear AI analysis
       
       // Refresh entries
       if (activeTab === 'entries') {
@@ -69,6 +74,31 @@ const JournalPage = () => {
       }
     } catch (error) {
       NotificationService.error('Failed to create journal entry');
+    }
+  };
+
+  const handleAIAnalysis = async () => {
+    if (!newEntry.content || newEntry.content.trim().length < 10) {
+      NotificationService.error('Please write at least 10 characters to get AI analysis');
+      return;
+    }
+
+    setAnalyzingAI(true);
+    try {
+      const response = await api.post('/journals/analyze', {
+        content: newEntry.content,
+        mood: newEntry.mood,
+        emotions: [],
+        triggers: []
+      });
+      
+      setAiAnalysis(response.data.analysis);
+      NotificationService.success('AI analysis complete!');
+    } catch (error) {
+      NotificationService.error('Failed to get AI analysis');
+      console.error('AI analysis error:', error);
+    } finally {
+      setAnalyzingAI(false);
     }
   };
 
@@ -115,8 +145,18 @@ const JournalPage = () => {
   return (
     <div className="min-h-screen bg-gray-50">
       <header className="bg-white shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
           <h1 className="text-2xl font-bold text-gray-900">Journal</h1>
+          <button 
+            onClick={() => {
+              if (window.confirm('Are you sure you want to logout?')) {
+                logout();
+              }
+            }}
+            className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg font-medium transition duration-300"
+          >
+            Logout
+          </button>
         </div>
       </header>
 
@@ -308,8 +348,45 @@ const JournalPage = () => {
                   </label>
                 </div>
               </div>
+
+              {/* AI Analysis Section */}
+              {aiAnalysis && (
+                <div className="mb-6 p-4 bg-gradient-to-r from-purple-50 to-blue-50 border border-purple-200 rounded-lg">
+                  <div className="flex items-start">
+                    <div className="flex-shrink-0">
+                      <span className="text-2xl">🤖</span>
+                    </div>
+                    <div className="ml-3 flex-1">
+                      <h4 className="text-sm font-semibold text-purple-900 mb-2">AI Insights</h4>
+                      <div className="text-sm text-gray-700 whitespace-pre-line">
+                        {aiAnalysis}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
               
-              <div className="flex justify-end">
+              <div className="flex justify-between items-center">
+                <button
+                  type="button"
+                  onClick={handleAIAnalysis}
+                  disabled={analyzingAI || !newEntry.content}
+                  className="bg-purple-600 hover:bg-purple-700 text-white font-medium py-2 px-6 rounded-lg transition duration-300 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                >
+                  {analyzingAI ? (
+                    <>
+                      <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                      </svg>
+                      Analyzing...
+                    </>
+                  ) : (
+                    <>
+                      🤖 Get AI Insights
+                    </>
+                  )}
+                </button>
                 <button
                   type="submit"
                   className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-6 rounded-lg transition duration-300"
@@ -323,9 +400,30 @@ const JournalPage = () => {
           /* Insights */
           <div>
             {insights && insights.totalEntries > 0 ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="bg-white rounded-lg shadow p-6">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Mood Trends</h3>
+              <div className="space-y-6">
+                {/* AI Insights Section */}
+                {insights.aiInsights && (
+                  <div className="bg-gradient-to-r from-purple-50 to-blue-50 border-2 border-purple-200 rounded-lg shadow-lg p-6">
+                    <div className="flex items-start mb-4">
+                      <div className="flex-shrink-0">
+                        <span className="text-3xl">🤖</span>
+                      </div>
+                      <div className="ml-3 flex-1">
+                        <h3 className="text-xl font-bold text-purple-900 mb-2">AI Insights from Your Journal</h3>
+                        <p className="text-sm text-purple-700">Based on your recent entries from the last 30 days</p>
+                      </div>
+                    </div>
+                    <div className="prose prose-sm max-w-none">
+                      <div className="text-gray-800 whitespace-pre-line leading-relaxed">
+                        {insights.aiInsights}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="bg-white rounded-lg shadow p-6">
+                    <h3 className="text-lg font-semibold text-gray-900 mb-4">Mood Trends</h3>
                   <div className="space-y-3">
                     {Object.entries(insights.moodTrends).map(([mood, count]) => (
                       <div key={mood} className="flex items-center justify-between">
@@ -393,6 +491,7 @@ const JournalPage = () => {
                       </div>
                     </div>
                   </div>
+                </div>
                 </div>
               </div>
             ) : (

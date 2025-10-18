@@ -24,13 +24,15 @@ const LoginPage = () => {
     try {
       const result = await login(formData.email, formData.password);
       if (result.success) {
-        // Redirect based on user role
-        if (result.user.role === 'admin') {
-          navigate('/admin/dashboard');
-        } else {
-          navigate('/dashboard');
-        }
-        NotificationService.success('Login successful!');
+        NotificationService.success('Login successful! Welcome back!');
+        // Redirect based on user role after a short delay to show toast
+        setTimeout(() => {
+          if (result.user.role === 'admin') {
+            navigate('/admin/dashboard');
+          } else {
+            navigate('/dashboard');
+          }
+        }, 500);
       } else {
         NotificationService.error(result.message);
       }

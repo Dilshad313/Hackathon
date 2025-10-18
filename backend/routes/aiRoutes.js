@@ -18,6 +18,11 @@ const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 router.post('/chat', auth, async (req, res) => {  
   const { message, botType = 'neha', sessionId } = req.body;
   try {
+    console.log('=== AI Chat Request ===');
+    console.log('User:', req.user?.id);
+    console.log('Bot Type:', botType);
+    console.log('Message:', message);
+    
     // Validate bot type
     if (!['neha', 'gemini'].includes(botType)) {
       return res.status(400).json({ message: 'Invalid bot type' });
@@ -71,14 +76,12 @@ const history = chatHistory
 
 
     // Get AI response from Gemini
+    console.log('Initializing Gemini model...');
     const model = genAI.getGenerativeModel({ 
-      model: "gemini-2.5-flash",
-      systemInstruction: `${systemPrompt}
-
-User context: ${JSON.stringify(context)}
-`,
+      model: "gemini-2.0-flash-exp"
     });
 
+    console.log('Starting chat with history length:', history.length);
     const chat = model.startChat({
       history: history,
       generationConfig: {
@@ -87,9 +90,16 @@ User context: ${JSON.stringify(context)}
       },
     });
 
-    const result = await chat.sendMessage(message);
+    // Prepend system prompt to first message if no history
+    const messageWithContext = history.length === 0 
+      ? `${systemPrompt}\n\nUser context: ${JSON.stringify(context)}\n\nUser: ${message}`
+      : message;
+
+    console.log('Sending message to AI...');
+    const result = await chat.sendMessage(messageWithContext);
     const response = await result.response;
     const aiResponse = response.text();
+    console.log('AI response received:', aiResponse.substring(0, 50));
 
     // Save conversation to history
     let conversationRecord = await AIChatHistory.findOne({ 
@@ -123,10 +133,12 @@ User context: ${JSON.stringify(context)}
     });
 
   } catch (error) {
-    console.error('AI Chat Error:', error);
+    console.error('=== AI Chat Error ===');
+    console.error('Error message:', error.message);
+    console.error('Error stack:', error.stack);
     
     // Return a helpful message if API key is invalid or not configured
-    if (error.message.includes('401') || error.message.includes('api_key')) {
+    if (error.message.includes('401') || error.message.includes('api_key') || error.message.includes('404')) {
       const fallbackResponse = botType === 'neha' 
         ? "I'm here to listen. Could you tell me more about how you're feeling? Remember, I'm an AI companion and you might want to speak with a mental health professional for more personalized support."
         : "I'm here to help. Could you ask me about appointments, prescriptions, courses, or other platform features?";

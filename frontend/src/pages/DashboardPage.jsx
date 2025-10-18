@@ -4,7 +4,7 @@ import api from '../services/api';
 import { useAuth } from '../context/AuthContext';
 
 const DashboardPage = () => {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
   const [dashboardData, setDashboardData] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -50,6 +50,16 @@ const DashboardPage = () => {
                 {user?.firstName?.charAt(0) || user?.username?.charAt(0) || 'U'}
               </div>
             )}
+            <button 
+              onClick={() => {
+                if (window.confirm('Are you sure you want to logout?')) {
+                  logout();
+                }
+              }}
+              className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg font-medium transition duration-300"
+            >
+              Logout
+            </button>
           </div>
         </div>
       </header>

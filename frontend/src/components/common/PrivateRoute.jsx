@@ -3,7 +3,17 @@ import { Navigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 
 const PrivateRoute = ({ children, allowedRoles = [] }) => {
-  const { isAuthenticated, user, loading } = useAuth();
+  let isAuthenticated, user, loading;
+  
+  try {
+    const authContext = useAuth();
+    isAuthenticated = authContext.isAuthenticated;
+    user = authContext.user;
+    loading = authContext.loading;
+  } catch (error) {
+    console.error('Auth context error:', error);
+    return <Navigate to="/login" replace />;
+  }
 
   if (loading) {
     return (

@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import api from '../services/api';
+import { useAuth } from '../context/AuthContext';
 import NotificationService from '../utils/notifications';
 
 const DoctorDashboard = () => {
+  const { logout } = useAuth();
   const [dashboardData, setDashboardData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [appointments, setAppointments] = useState([]);
@@ -57,6 +59,16 @@ const DoctorDashboard = () => {
           <h1 className="text-2xl font-bold text-gray-900">Doctor Dashboard</h1>
           <div className="flex items-center space-x-4">
             <span className="text-gray-700">Welcome, Dr. {localStorage.getItem('doctorName') || 'User'}!</span>
+            <button 
+              onClick={() => {
+                if (window.confirm('Are you sure you want to logout?')) {
+                  logout();
+                }
+              }}
+              className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg font-medium transition duration-300"
+            >
+              Logout
+            </button>
           </div>
         </div>
       </header>

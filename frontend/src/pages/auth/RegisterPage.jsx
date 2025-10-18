@@ -28,13 +28,15 @@ const RegisterPage = () => {
     try {
       const result = await register(formData);
       if (result.success) {
-        // Redirect based on user role
-        if (result.user && result.user.role === 'admin') {
-          navigate('/admin/dashboard');
-        } else {
-          navigate('/dashboard');
-        }
-        NotificationService.success('Registration successful!');
+        NotificationService.success('Registration successful! Welcome to SoulSync!');
+        // Redirect based on user role after a short delay to show toast
+        setTimeout(() => {
+          if (result.user && result.user.role === 'admin') {
+            navigate('/admin/dashboard');
+          } else {
+            navigate('/dashboard');
+          }
+        }, 500);
       } else {
         NotificationService.error(result.message);
       }

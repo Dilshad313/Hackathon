@@ -11,6 +11,9 @@ const PHQ9Assessment = () => {
   const [loading, setLoading] = useState(true);
   const [currentQuestion, setCurrentQuestion] = useState(0);
   const [assessmentName, setAssessmentName] = useState('');
+  const [showAIHelp, setShowAIHelp] = useState(false);
+  const [aiGuidance, setAiGuidance] = useState('');
+  const [loadingAI, setLoadingAI] = useState(false);
 
   useEffect(() => {
     fetchQuestions();
@@ -46,6 +49,8 @@ const PHQ9Assessment = () => {
   const getNextQuestion = () => {
     if (currentQuestion < questions.length - 1) {
       setCurrentQuestion(prev => prev + 1);
+      setShowAIHelp(false); // Hide AI help when moving to next question
+      setAiGuidance('');
     } else {
       submitAssessment();
     }
@@ -54,6 +59,28 @@ const PHQ9Assessment = () => {
   const getPrevQuestion = () => {
     if (currentQuestion > 0) {
       setCurrentQuestion(prev => prev - 1);
+      setShowAIHelp(false); // Hide AI help when moving to previous question
+      setAiGuidance('');
+    }
+  };
+
+  const getAIGuidance = async () => {
+    setLoadingAI(true);
+    setShowAIHelp(true);
+    
+    try {
+      const currentQ = questions[currentQuestion];
+      const response = await api.post('/ai/chat', {
+        message: `I'm taking a mental health assessment and I need help understanding this question: "${currentQ.text}". Can you explain what this question is asking about and provide guidance on how to answer it honestly? Keep it brief and supportive.`,
+        botType: 'neha'
+      });
+      
+      setAiGuidance(response.data.response);
+    } catch (error) {
+      setAiGuidance('I\'m here to help! This question is asking about your recent experiences. Try to think about the past two weeks and answer as honestly as you can. There are no right or wrong answers - this is about understanding how you\'ve been feeling.');
+      console.error('AI guidance error:', error);
+    } finally {
+      setLoadingAI(false);
     }
   };
 
@@ -140,9 +167,49 @@ const PHQ9Assessment = () => {
 
           {/* Question */}
           <div className="mb-8">
-            <h2 className="text-xl font-semibold text-gray-900 mb-6">
-              {currentQ.text}
-            </h2>
+            <div className="flex justify-between items-start mb-4">
+              <h2 className="text-xl font-semibold text-gray-900 flex-1">
+                {currentQ.text}
+              </h2>
+              <button
+                onClick={getAIGuidance}
+                disabled={loadingAI}
+                className="ml-4 flex items-center gap-2 px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-sm font-medium transition disabled:opacity-50"
+              >
+                {loadingAI ? (
+                  <>
+                    <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                    </svg>
+                    Loading...
+                  </>
+                ) : (
+                  <>
+                    🤖 Need Help?
+                  </>
+                )}
+              </button>
+            </div>
+
+            {/* AI Guidance Display */}
+            {showAIHelp && aiGuidance && (
+              <div className="mb-6 p-4 bg-purple-50 border-l-4 border-purple-500 rounded-r-lg">
+                <div className="flex items-start">
+                  <span className="text-2xl mr-3">💡</span>
+                  <div className="flex-1">
+                    <h4 className="font-semibold text-purple-900 mb-2">AI Guidance</h4>
+                    <p className="text-sm text-gray-700 leading-relaxed">{aiGuidance}</p>
+                  </div>
+                  <button
+                    onClick={() => setShowAIHelp(false)}
+                    className="text-purple-600 hover:text-purple-800 ml-2"
+                  >
+                    ✕
+                  </button>
+                </div>
+              </div>
+            )}
             
             {/* Answer options */}
             <div className="space-y-3">
@@ -156,7 +223,7 @@ const PHQ9Assessment = () => {
                     onChange={() => handleAnswerChange(currentQuestion, index)}
                     className="h-4 w-4 text-blue-600 focus:ring-blue-500 mt-1"
                   />
-                  <label htmlFor={`answer-${index}`} className="ml-3 block text-gray-700">
+                  <label htmlFor={`answer-${index}`} className="ml-3 block text-gray-700 cursor-pointer">
                     {option}
                   </label>
                 </div>

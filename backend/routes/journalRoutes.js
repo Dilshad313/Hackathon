@@ -3,8 +3,12 @@ const { auth } = require('../middleware/auth');
 const JournalEntry = require('../models/Journal');
 const Doctor = require('../models/Doctor');
 const User = require('../models/User');
+const { GoogleGenerativeAI } = require('@google/generative-ai');
 
 const router = express.Router();
+
+// Initialize Google AI client
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || 'dummy-key');
 
 // @route   POST api/journals/create
 // @desc    Create a journal entry
@@ -138,6 +142,128 @@ router.get('/shared-with-me', auth, async (req, res) => {
   }
 });
 
+// @route   GET api/journals/insights
+// @desc    Get journal insights for user
+// @access  Private
+router.get('/insights', auth, async (req, res) => {
+  try {
+    // Get journal entries from the last 30 days
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+    const entries = await JournalEntry.find({
+      userId: req.user.id,
+      createdAt: { $gte: thirtyDaysAgo }
+    });
+
+    if (entries.length === 0) {
+      return res.json({
+        moodTrends: {},
+        commonTriggers: [],
+        commonCopingStrategies: [],
+        gratitudeFrequency: 0,
+        totalEntries: 0
+      });
+    }
+
+    // Calculate insights
+    const moodTrends = {};
+    const triggersMap = new Map();
+    const copingStrategiesMap = new Map();
+    let gratitudeEntries = 0;
+
+    entries.forEach(entry => {
+      // Mood trends
+      if (entry.mood) {
+        moodTrends[entry.mood] = (moodTrends[entry.mood] || 0) + 1;
+      }
+
+      // Triggers
+      if (entry.triggers && entry.triggers.length > 0) {
+        entry.triggers.forEach(trigger => {
+          triggersMap.set(trigger, (triggersMap.get(trigger) || 0) + 1);
+        });
+      }
+
+      // Coping strategies
+      if (entry.copingStrategies && entry.copingStrategies.length > 0) {
+        entry.copingStrategies.forEach(strategy => {
+          copingStrategiesMap.set(strategy, (copingStrategiesMap.get(strategy) || 0) + 1);
+        });
+      }
+
+      // Gratitude
+      if (entry.gratitude && entry.gratitude.length > 0) {
+        gratitudeEntries++;
+      }
+    });
+
+    const commonTriggers = Array.from(triggersMap.entries())
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 5)
+      .map(([trigger, count]) => ({ trigger, count }));
+
+    const commonCopingStrategies = Array.from(copingStrategiesMap.entries())
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 5)
+      .map(([strategy, count]) => ({ strategy, count }));
+
+    const gratitudeFrequency = entries.length > 0 ? (gratitudeEntries / entries.length) * 100 : 0;
+
+    // Generate AI insights if there are entries
+    let aiInsights = null;
+    if (entries.length > 0) {
+      try {
+        // Prepare summary of recent entries for AI analysis
+        const recentEntries = entries.slice(0, 5);
+        const entrySummary = recentEntries.map(e => ({
+          mood: e.mood,
+          content: e.content.substring(0, 200), // First 200 chars
+          date: e.createdAt
+        }));
+
+        const insightsPrompt = `Analyze these recent journal entries and provide supportive insights:
+
+${entrySummary.map((e, i) => `Entry ${i + 1} (${new Date(e.date).toLocaleDateString()}):
+Mood: ${e.mood}
+Content: ${e.content}
+`).join('\n')}
+
+Provide:
+1. Overall emotional patterns (2-3 sentences)
+2. Positive observations and strengths (2-3 points)
+3. Gentle suggestions for wellbeing (2-3 actionable tips)
+
+Be warm, encouraging, and supportive. Focus on growth and self-compassion.`;
+
+        const model = genAI.getGenerativeModel({ 
+          model: "gemini-2.0-flash-exp"
+        });
+
+        const result = await model.generateContent(insightsPrompt);
+        const response = await result.response;
+        aiInsights = response.text();
+        
+        console.log('AI Insights generated for journal overview');
+      } catch (aiError) {
+        console.log('AI insights generation failed:', aiError.message);
+        // Continue without AI insights
+      }
+    }
+
+    res.json({
+      moodTrends,
+      commonTriggers,
+      commonCopingStrategies,
+      gratitudeFrequency,
+      totalEntries: entries.length,
+      aiInsights
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
 // @route   GET api/journals/:id
 // @desc    Get journal entry by ID
 // @access  Private
@@ -226,82 +352,136 @@ router.delete('/:id', auth, async (req, res) => {
   }
 });
 
-// @route   GET api/journals/insights
-// @desc    Get journal insights for user
+// @route   POST api/journals/analyze
+// @desc    Get AI analysis of journal entry
 // @access  Private
-router.get('/insights', auth, async (req, res) => {
+router.post('/analyze', auth, async (req, res) => {
   try {
-    // Get journal entries from the last 30 days
-    const thirtyDaysAgo = new Date();
-    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    console.log('=== Journal AI Analysis Started ===');
+    console.log('User ID:', req.user?.id);
+    console.log('Content length:', req.body.content?.length);
+    
+    const { content, mood, emotions, triggers } = req.body;
 
-    const entries = await JournalEntry.find({
-      userId: req.user.id,
-      createdAt: { $gte: thirtyDaysAgo }
-    });
-
-    if (entries.length === 0) {
-      return res.json({
-        moodTrends: {},
-        commonTriggers: [],
-        commonCopingStrategies: [],
-        gratitudeFrequency: 0,
-        totalEntries: 0
-      });
+    if (!content || content.trim().length < 10) {
+      console.log('Content too short');
+      return res.status(400).json({ message: 'Journal content is too short for analysis' });
     }
 
-    // Calculate insights
-    const moodTrends = {};
-    const triggersMap = new Map();
-    const copingStrategiesMap = new Map();
-    let gratitudeEntries = 0;
+    console.log('Building AI prompt...');
+    
+    // Build context for AI analysis
+    const analysisPrompt = `You are a compassionate mental health AI assistant analyzing a journal entry. Provide supportive, empathetic insights.
 
-    entries.forEach(entry => {
-      // Mood trends
-      if (entry.mood) {
-        moodTrends[entry.mood] = (moodTrends[entry.mood] || 0) + 1;
-      }
+Journal Entry:
+Content: ${content}
+Mood: ${mood || 'Not specified'}
+Emotions: ${emotions?.join(', ') || 'Not specified'}
+Triggers: ${triggers?.join(', ') || 'Not specified'}
 
-      // Triggers
-      if (entry.triggers && entry.triggers.length > 0) {
-        entry.triggers.forEach(trigger => {
-          triggersMap.set(trigger, (triggersMap.get(trigger) || 0) + 1);
-        });
-      }
+Please provide:
+1. A brief empathetic summary (2-3 sentences)
+2. Identified emotional patterns or themes
+3. 3-4 supportive suggestions or coping strategies
+4. Positive affirmations or encouragement
 
-      // Coping strategies
-      if (entry.copingStrategies && entry.copingStrategies.length > 0) {
-        entry.copingStrategies.forEach(strategy => {
-          copingStrategiesMap.set(strategy, (copingStrategiesMap.get(strategy) || 0) + 1);
-        });
-      }
+Keep the tone warm, supportive, and non-judgmental. Focus on emotional validation and practical self-care tips.`;
 
-      // Gratitude
-      if (entry.gratitude && entry.gratitude.length > 0) {
-        gratitudeEntries++;
-      }
-    });
+    try {
+      const model = genAI.getGenerativeModel({ 
+        model: "gemini-2.0-flash-exp"
+      });
 
-    const commonTriggers = Array.from(triggersMap.entries())
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 5)
-      .map(([trigger, count]) => ({ trigger, count }));
+      const result = await model.generateContent(analysisPrompt);
+      const response = await result.response;
+      const aiAnalysis = response.text();
+      
+      console.log('AI Analysis successful:', aiAnalysis.substring(0, 100));
 
-    const commonCopingStrategies = Array.from(copingStrategiesMap.entries())
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 5)
-      .map(([strategy, count]) => ({ strategy, count }));
+      res.json({
+        analysis: aiAnalysis,
+        analyzedAt: new Date()
+      });
+    } catch (aiError) {
+      console.log('AI API error, using fallback response:', aiError.message);
+      
+      // Fallback response if AI API fails
+      const fallbackAnalysis = `Thank you for sharing your thoughts. Journaling is a powerful tool for self-reflection and emotional processing.
 
-    const gratitudeFrequency = entries.length > 0 ? (gratitudeEntries / entries.length) * 100 : 0;
+Based on your entry, I notice you're experiencing ${mood || 'various emotions'}. It's important to acknowledge and validate these feelings.
 
-    res.json({
-      moodTrends,
-      commonTriggers,
-      commonCopingStrategies,
-      gratitudeFrequency,
-      totalEntries: entries.length
-    });
+Here are some supportive suggestions:
+• Practice self-compassion and be gentle with yourself
+• Consider deep breathing or mindfulness exercises
+• Reach out to supportive friends or family
+• Engage in activities that bring you joy and relaxation
+
+Remember, it's okay to feel what you're feeling. Your emotions are valid, and taking time to journal shows self-awareness and strength.`;
+
+      res.json({
+        analysis: fallbackAnalysis,
+        analyzedAt: new Date(),
+        fallback: true
+      });
+    }
   } catch (error) {
+    console.error('Journal analysis error:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+// @route   GET api/journals/:id/ai-insights
+// @desc    Get AI insights for a specific journal entry
+// @access  Private
+router.get('/:id/ai-insights', auth, async (req, res) => {
+  try {
+    const entry = await JournalEntry.findById(req.params.id);
+
+    if (!entry) {
+      return res.status(404).json({ message: 'Journal entry not found' });
+    }
+
+    if (!entry.userId.equals(req.user.id)) {
+      return res.status(403).json({ message: 'Not authorized' });
+    }
+
+    // Generate AI insights for the entry
+    const insightsPrompt = `Analyze this journal entry and provide brief insights:
+
+Title: ${entry.title}
+Content: ${entry.content}
+Mood: ${entry.mood}
+Date: ${entry.createdAt}
+
+Provide:
+1. Key emotional themes (1-2 sentences)
+2. One actionable self-care tip
+3. One positive observation
+
+Be brief, supportive, and encouraging.`;
+
+    try {
+      const model = genAI.getGenerativeModel({ 
+        model: "gemini-2.0-flash-exp"
+      });
+
+      const result = await model.generateContent(insightsPrompt);
+      const response = await result.response;
+      const insights = response.text();
+      
+      console.log('AI Insights successful');
+
+      res.json({ insights });
+    } catch (aiError) {
+      console.log('AI API error for insights:', aiError.message);
+      
+      res.json({
+        insights: `Your journal entry shows self-awareness and reflection. Continue this practice of expressing your thoughts and feelings. Consider incorporating relaxation techniques or activities you enjoy into your routine.`,
+        fallback: true
+      });
+    }
+  } catch (error) {
+    console.error('AI insights error:', error);
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 });

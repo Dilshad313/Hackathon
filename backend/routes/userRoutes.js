@@ -5,7 +5,6 @@ const { validateRegister, validateLogin } = require('../middleware/validation');
 const User = require('../models/User');
 const Doctor = require('../models/Doctor');
 const jwt = require('jsonwebtoken');
-const bcrypt = require('bcryptjs');
 
 const router = express.Router();
 
@@ -33,14 +32,11 @@ router.post('/register', validateRegister, async (req, res) => {
       username,
       password,
       firstName,
-      lastName
+      lastName,
+      role: role || 'patient'
     });
 
-    // Hash password
-    const salt = await bcrypt.genSalt(10);
-    user.password = await bcrypt.hash(password, salt);
-    user.role = role || 'patient';
-
+    // Password will be hashed automatically by the pre-save hook in User model
     await user.save();
     
     // Create JWT token
@@ -81,18 +77,26 @@ router.post('/register', validateRegister, async (req, res) => {
 router.post('/login', validateLogin, async (req, res) => {
   try {
     const { email, password } = req.body;
+    
+    console.log('Login attempt for email:', email);
 
-    // Check for user
-    const user = await User.findOne({ email });
+    // Check for user - explicitly select password field
+    const user = await User.findOne({ email }).select('+password');
     if (!user) {
+      console.log('User not found:', email);
       return res.status(400).json({ message: 'Invalid credentials' });
     }
 
+    console.log('User found, checking password...');
+    
     // Check password
     const isMatch = await user.comparePassword(password);
     if (!isMatch) {
+      console.log('Password mismatch for:', email);
       return res.status(400).json({ message: 'Invalid credentials' });
     }
+    
+    console.log('Login successful for:', email);
 
     // Create JWT token
     const payload = {

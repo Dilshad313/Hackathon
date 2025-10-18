@@ -4,6 +4,7 @@ import NotificationService from '../utils/notifications';
 import { useAuth } from '../context/AuthContext';
 
 const ChatPage = () => {
+  const { logout } = useAuth();
   const [activeBot, setActiveBot] = useState('neha'); // 'neha' or 'gemini'
   const [messages, setMessages] = useState([]);
   const [inputMessage, setInputMessage] = useState('');
@@ -53,8 +54,8 @@ const ChatPage = () => {
       if (response.data && response.data.length > 0) {
         const lastSession = response.data[0];
         setSessionId(lastSession.sessionId);
-        const formattedMessages = lastSession.conversation.map(msg => ({
-          id: msg.timestamp, // Or a more unique ID if available
+        const formattedMessages = lastSession.conversation.map((msg, index) => ({
+          id: `${msg.role}_${msg.timestamp}_${index}`, // Unique ID combining role, timestamp, and index
           text: msg.content,
           sender: msg.role === 'user' ? 'user' : 'bot',
           timestamp: msg.timestamp,
@@ -62,7 +63,7 @@ const ChatPage = () => {
         setMessages(formattedMessages);
       } else {
         // If no history, start with a welcome message
-        setMessages([{ id: 1, text: `Hello! I'm ${botConfig[activeBot].name}. How can I help you today?`, sender: 'bot', timestamp: new Date().toISOString() }]);
+        setMessages([{ id: `welcome_${Date.now()}`, text: `Hello! I'm ${botConfig[activeBot].name}. How can I help you today?`, sender: 'bot', timestamp: new Date().toISOString() }]);
       }
     } catch (error) {
       console.error('Error loading chat history:', error);
@@ -75,8 +76,9 @@ const ChatPage = () => {
   const sendMessage = async () => {
     if (!inputMessage.trim()) return;
 
+    const timestamp = Date.now();
     const userMessage = {
-      id: new Date().toISOString(),
+      id: `user_${timestamp}`,
       text: inputMessage,
       sender: 'user',
       timestamp: new Date().toISOString(),
@@ -97,7 +99,13 @@ const ChatPage = () => {
       const { response: aiResponse, sessionId: newSessionId } = response.data;
       setSessionId(newSessionId);
 
-      const botMessage = { id: new Date().toISOString() + '_bot', text: aiResponse, sender: 'bot', timestamp: new Date().toISOString(), botType: activeBot };
+      const botMessage = { 
+        id: `bot_${Date.now()}`, 
+        text: aiResponse, 
+        sender: 'bot', 
+        timestamp: new Date().toISOString(), 
+        botType: activeBot 
+      };
       setMessages(prev => [...prev, botMessage]);
     } catch (error) {
       NotificationService.error('Failed to send message');
@@ -120,29 +128,42 @@ const ChatPage = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between">
           <h1 className="text-2xl font-bold text-gray-900">AI Support Chat</h1>
           
-          {/* Bot Selection */}
-          <div className="flex space-x-2">
-            <button
-              onClick={() => setActiveBot('neha')}
-              className={`px-4 py-2 rounded-lg font-medium transition duration-300 ${
-                activeBot === 'neha'
-                  ? 'bg-pink-100 text-pink-800 border border-pink-300'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-              }`}
+          <div className="flex items-center space-x-4">
+            {/* Bot Selection */}
+            <div className="flex space-x-2">
+              <button
+                onClick={() => setActiveBot('neha')}
+                className={`px-4 py-2 rounded-lg font-medium transition duration-300 ${
+                  activeBot === 'neha'
+                    ? 'bg-pink-100 text-pink-800 border border-pink-300'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+              >
+                <span className="mr-2">😊</span>
+                Neha (Empathetic)
+              </button>
+              <button
+                onClick={() => setActiveBot('gemini')}
+                className={`px-4 py-2 rounded-lg font-medium transition duration-300 ${
+                  activeBot === 'gemini'
+                    ? 'bg-blue-100 text-blue-800 border border-blue-300'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+              >
+                <span className="mr-2">🤖</span>
+                Gemini (Informative)
+              </button>
+            </div>
+            
+            <button 
+              onClick={() => {
+                if (window.confirm('Are you sure you want to logout?')) {
+                  logout();
+                }
+              }}
+              className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg font-medium transition duration-300"
             >
-              <span className="mr-2">😊</span>
-              Neha (Empathetic)
-            </button>
-            <button
-              onClick={() => setActiveBot('gemini')}
-              className={`px-4 py-2 rounded-lg font-medium transition duration-300 ${
-                activeBot === 'gemini'
-                  ? 'bg-blue-100 text-blue-800 border border-blue-300'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-              }`}
-            >
-              <span className="mr-2">🤖</span>
-              Gemini (Informative)
+              Logout
             </button>
           </div>
         </div>

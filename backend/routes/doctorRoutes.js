@@ -8,6 +8,136 @@ const Notification = require('../models/Notification');
 
 const router = express.Router();
 
+// @route   GET api/doctors/search
+// @desc    Search for doctors
+// @access  Private
+router.get('/search', auth, async (req, res) => {
+  try {
+    const { 
+      page = 1, 
+      limit = 10, 
+      search, 
+      specialization, 
+      location, 
+      rating,
+      consultationType 
+    } = req.query;
+
+    let query = { adminApprovalStatus: 'approved', isAvailable: true };
+
+    if (search) {
+      const userQuery = {
+        $or: [
+          { firstName: { $regex: search, $options: 'i' } },
+          { lastName: { $regex: search, $options: 'i' } },
+          { username: { $regex: search, $options: 'i' } }
+        ]
+      };
+      
+      const users = await User.find(userQuery, '_id');
+      const userIds = users.map(user => user._id);
+      
+      query.userId = { $in: userIds };
+    }
+
+    if (specialization) {
+      query.specialization = { $regex: specialization, $options: 'i' };
+    }
+
+    if (rating) {
+      query['rating.average'] = { $gte: Number(rating) };
+    }
+
+    if (consultationType) {
+      query.consultationTypes = { $in: [consultationType] };
+    }
+
+    // Location-based search would require geospatial indexing (not implemented here)
+
+    const doctors = await Doctor.find(query)
+      .populate('userId', 'username firstName lastName profilePicture')
+      .sort({ 'rating.average': -1 })
+      .limit(limit * 1)
+      .skip((page - 1) * limit);
+
+    const total = await Doctor.countDocuments(query);
+
+    res.json({
+      doctors,
+      totalPages: Math.ceil(total / limit),
+      currentPage: page,
+      total
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+// @route   GET api/doctors/my-profile
+// @desc    Get logged-in doctor's profile
+// @access  Private - Doctor
+router.get('/my-profile', doctorAuth, async (req, res) => {
+  try {
+    const doctor = await Doctor.findOne({ userId: req.user.id })
+      .populate('userId', 'username firstName lastName email profilePicture');
+
+    if (!doctor) {
+      return res.status(404).json({ message: 'Doctor profile not found' });
+    }
+
+    res.json(doctor);
+  } catch (error) {
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+// @route   GET api/doctors/availability/:id
+// @desc    Get doctor's availability
+// @access  Private
+router.get('/availability/:id', auth, async (req, res) => {
+  try {
+    const doctor = await Doctor.findById(req.params.id);
+    if (!doctor) {
+      return res.status(404).json({ message: 'Doctor not found' });
+    }
+
+    if (doctor.adminApprovalStatus !== 'approved') {
+      return res.status(400).json({ message: 'Doctor is not approved' });
+    }
+
+    res.json({
+      availability: doctor.availability,
+      workingHours: doctor.workingHours
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+// @route   GET api/doctors/appointments/:id
+// @desc    Get doctor's appointments (for doctors and admins)
+// @access  Private - Doctor or Admin
+router.get('/appointments/:id', auth, async (req, res) => {
+  try {
+    const doctor = await Doctor.findById(req.params.id);
+    if (!doctor) {
+      return res.status(404).json({ message: 'Doctor not found' });
+    }
+
+    if (req.user.role === 'doctor' && !doctor.userId.equals(req.user.id)) {
+      return res.status(403).json({ message: 'Not authorized to view these appointments' });
+    }
+
+    const appointments = await Appointment.find({ doctorId: doctor._id })
+      .populate('patientId', 'firstName lastName username')
+      .sort({ appointmentDate: 1, startTime: 1 });
+
+    res.json({ appointments });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
 // @route   GET api/doctors
 // @desc    Get all doctors (public)
 // @access  Public (after authentication)
@@ -166,134 +296,5 @@ router.put('/profile', doctorAuth, async (req, res) => {
   }
 });
 
-// @route   GET api/doctors/my-profile
-// @desc    Get logged-in doctor's profile
-// @access  Private - Doctor
-router.get('/my-profile', doctorAuth, async (req, res) => {
-  try {
-    const doctor = await Doctor.findOne({ userId: req.user.id })
-      .populate('userId', 'username firstName lastName email profilePicture');
-
-    if (!doctor) {
-      return res.status(404).json({ message: 'Doctor profile not found' });
-    }
-
-    res.json(doctor);
-  } catch (error) {
-    res.status(500).json({ message: 'Server error', error: error.message });
-  }
-});
-
-// @route   GET api/doctors/availability/:id
-// @desc    Get doctor's availability
-// @access  Private
-router.get('/availability/:id', auth, async (req, res) => {
-  try {
-    const doctor = await Doctor.findById(req.params.id);
-    if (!doctor) {
-      return res.status(404).json({ message: 'Doctor not found' });
-    }
-
-    if (doctor.adminApprovalStatus !== 'approved') {
-      return res.status(400).json({ message: 'Doctor is not approved' });
-    }
-
-    res.json({
-      availability: doctor.availability,
-      workingHours: doctor.workingHours
-    });
-  } catch (error) {
-    res.status(500).json({ message: 'Server error', error: error.message });
-  }
-});
-
-// @route   GET api/doctors/search
-// @desc    Search for doctors
-// @access  Private
-router.get('/search', auth, async (req, res) => {
-  try {
-    const { 
-      page = 1, 
-      limit = 10, 
-      search, 
-      specialization, 
-      location, 
-      rating,
-      consultationType 
-    } = req.query;
-
-    let query = { adminApprovalStatus: 'approved', isAvailable: true };
-
-    if (search) {
-      const userQuery = {
-        $or: [
-          { firstName: { $regex: search, $options: 'i' } },
-          { lastName: { $regex: search, $options: 'i' } },
-          { username: { $regex: search, $options: 'i' } }
-        ]
-      };
-      
-      const users = await User.find(userQuery, '_id');
-      const userIds = users.map(user => user._id);
-      
-      query.userId = { $in: userIds };
-    }
-
-    if (specialization) {
-      query.specialization = { $regex: specialization, $options: 'i' };
-    }
-
-    if (rating) {
-      query['rating.average'] = { $gte: Number(rating) };
-    }
-
-    if (consultationType) {
-      query.consultationTypes = { $in: [consultationType] };
-    }
-
-    // Location-based search would require geospatial indexing (not implemented here)
-
-    const doctors = await Doctor.find(query)
-      .populate('userId', 'username firstName lastName profilePicture')
-      .sort({ 'rating.average': -1 })
-      .limit(limit * 1)
-      .skip((page - 1) * limit);
-
-    const total = await Doctor.countDocuments(query);
-
-    res.json({
-      doctors,
-      totalPages: Math.ceil(total / limit),
-      currentPage: page,
-      total
-    });
-  } catch (error) {
-    res.status(500).json({ message: 'Server error', error: error.message });
-  }
-});
-
-// @route   GET api/doctors/appointments/:id
-// @desc    Get doctor's appointments (for doctors and admins)
-// @access  Private - Doctor or Admin
-router.get('/appointments/:id', auth, async (req, res) => {
-  try {
-    const doctor = await Doctor.findById(req.params.id);
-    if (!doctor) {
-      return res.status(404).json({ message: 'Doctor not found' });
-    }
-
-    if (req.user.role === 'doctor' && !doctor.userId.equals(req.user.id)) {
-      return res.status(403).json({ message: 'Not authorized to view these appointments' });
-    }
-
-    const appointments = await Appointment.find({ doctorId: doctor._id })
-      .populate('patientId', 'firstName lastName username')
-      .sort({ appointmentDate: 1, startTime: 1 });
-
-    res.json({ appointments });
-  } catch (error) {
-    res.status(500).json({ message: 'Server error', error: error.message });
-  }
-});
 
 module.exports = router;

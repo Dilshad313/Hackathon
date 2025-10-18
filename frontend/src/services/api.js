@@ -4,10 +4,13 @@ const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api'
 
 const api = axios.create({
   baseURL: API_BASE_URL,
+  headers: {
+    'Content-Type': 'application/json',
+  },
 });
 
 // Set auth token to headers
-const setAuthToken = (token) => {
+api.setAuthToken = (token) => {
   if (token) {
     api.defaults.headers.common['x-auth-token'] = token;
   } else {
@@ -33,14 +36,18 @@ api.interceptors.request.use(
 api.interceptors.response.use(
   (response) => response,
   (error) => {
+    // Only redirect to login if it's a 401 AND not a login/register request
     if (error.response && error.response.status === 401) {
-      // Token expired or invalid, logout user
-      localStorage.removeItem('token');
-      window.location.href = '/login';
+      const isAuthRequest = error.config.url.includes('/login') || error.config.url.includes('/register');
+      
+      if (!isAuthRequest) {
+        // Token expired or invalid, logout user
+        localStorage.removeItem('token');
+        window.location.href = '/login';
+      }
     }
     return Promise.reject(error);
   }
 );
 
 export default api;
-export { setAuthToken };
