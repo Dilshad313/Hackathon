@@ -161,6 +161,56 @@ router.get('/users', adminAuth, async (req, res) => {
   }
 });
 
+// @route   POST api/admin/users/add
+// @desc    Add a new user
+// @access  Private - Admin
+router.post('/users/add', adminAuth, async (req, res) => {
+  try {
+    const { username, email, password, firstName, lastName, role } = req.body;
+
+    // Validation
+    if (!username || !email || !password) {
+      return res.status(400).json({ message: 'Please provide username, email, and password' });
+    }
+
+    // Check if user already exists
+    const existingUser = await User.findOne({ $or: [{ email }, { username }] });
+    if (existingUser) {
+      return res.status(400).json({ 
+        message: existingUser.email === email ? 'Email already exists' : 'Username already exists' 
+      });
+    }
+
+    // Create new user
+    const user = new User({
+      username,
+      email,
+      password,
+      firstName: firstName || '',
+      lastName: lastName || '',
+      role: role || 'patient',
+      isActive: true
+    });
+
+    await user.save();
+
+    res.status(201).json({ 
+      message: 'User created successfully', 
+      user: {
+        _id: user._id,
+        username: user.username,
+        email: user.email,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        role: user.role
+      }
+    });
+  } catch (error) {
+    console.error('Add user error:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
 // @route   PUT api/admin/users/:id/toggle-status
 // @desc    Toggle user active status
 // @access  Private - Admin
@@ -176,6 +226,30 @@ router.put('/users/:id/toggle-status', adminAuth, async (req, res) => {
 
     res.json({ message: `User status updated to ${user.isActive ? 'active' : 'inactive'}`, user });
   } catch (error) {
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+// @route   DELETE api/admin/users/:id
+// @desc    Delete a user
+// @access  Private - Admin
+router.delete('/users/:id', adminAuth, async (req, res) => {
+  try {
+    const user = await User.findById(req.params.id);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    // Prevent deleting admin users
+    if (user.role === 'admin') {
+      return res.status(403).json({ message: 'Cannot delete admin users' });
+    }
+
+    await User.findByIdAndDelete(req.params.id);
+
+    res.json({ message: 'User deleted successfully' });
+  } catch (error) {
+    console.error('Delete user error:', error);
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 });
