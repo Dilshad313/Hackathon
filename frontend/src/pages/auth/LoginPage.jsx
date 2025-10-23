@@ -32,6 +32,10 @@ const LoginPage = () => {
         setTimeout(() => {
           if (result.user.role === 'admin') {
             navigate('/admin/dashboard');
+          } else if (result.user.role === 'doctor') {
+            navigate('/doctor/dashboard');
+          } else if (result.user.role === 'hospital') {
+            navigate('/hospital/dashboard');
           } else {
             navigate('/dashboard');
           }

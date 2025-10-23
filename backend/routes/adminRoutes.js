@@ -917,4 +917,133 @@ router.post('/notifications/send', adminAuth, async (req, res) => {
   }
 });
 
+// ============================================
+// FORUM MODERATION ROUTES
+// ============================================
+
+// @route   GET api/admin/forum/posts
+// @desc    Get all forum posts for moderation
+// @access  Private - Admin
+router.get('/forum/posts', adminAuth, async (req, res) => {
+  try {
+    const { status, category, search, page = 1, limit = 10 } = req.query;
+
+    let query = {};
+
+    if (status) {
+      query.status = status;
+    }
+
+    if (category) {
+      query.category = category;
+    }
+
+    if (search) {
+      query.$or = [
+        { title: { $regex: search, $options: 'i' } },
+        { content: { $regex: search, $options: 'i' } }
+      ];
+    }
+
+    const posts = await ForumPost.find(query)
+      .populate('authorId', 'username firstName lastName email')
+      .sort({ createdAt: -1 })
+      .limit(limit * 1)
+      .skip((page - 1) * limit);
+
+    const total = await ForumPost.countDocuments(query);
+
+    res.json({
+      posts,
+      totalPages: Math.ceil(total / limit),
+      currentPage: page,
+      total
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+// @route   PUT api/admin/forum/posts/:id/moderate
+// @desc    Moderate forum post (approve/flag/remove)
+// @access  Private - Admin
+router.put('/forum/posts/:id/moderate', adminAuth, async (req, res) => {
+  try {
+    const { status, moderationReason } = req.body;
+
+    if (!['active', 'flagged', 'removed'].includes(status)) {
+      return res.status(400).json({ message: 'Invalid status' });
+    }
+
+    const post = await ForumPost.findById(req.params.id);
+    if (!post) {
+      return res.status(404).json({ message: 'Post not found' });
+    }
+
+    post.status = status;
+    if (moderationReason) {
+      post.moderationReason = moderationReason;
+    }
+    post.moderatedBy = req.user.id;
+    post.moderatedAt = new Date();
+
+    await post.save();
+
+    // Notify post author if post was flagged or removed
+    if (status === 'flagged' || status === 'removed') {
+      const notification = new Notification({
+        userId: post.authorId,
+        title: `Your post has been ${status}`,
+        message: moderationReason || `Your post "${post.title}" has been ${status} by a moderator.`,
+        type: 'forum-moderation'
+      });
+      await notification.save();
+    }
+
+    res.json({ message: `Post ${status} successfully`, post });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+// @route   DELETE api/admin/forum/posts/:id
+// @desc    Delete forum post permanently
+// @access  Private - Admin
+router.delete('/forum/posts/:id', adminAuth, async (req, res) => {
+  try {
+    const post = await ForumPost.findById(req.params.id);
+    if (!post) {
+      return res.status(404).json({ message: 'Post not found' });
+    }
+
+    await ForumPost.findByIdAndDelete(req.params.id);
+
+    res.json({ message: 'Post deleted successfully' });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+// @route   DELETE api/admin/forum/posts/:postId/comments/:commentId
+// @desc    Delete forum comment
+// @access  Private - Admin
+router.delete('/forum/posts/:postId/comments/:commentId', adminAuth, async (req, res) => {
+  try {
+    const post = await ForumPost.findById(req.params.postId);
+    if (!post) {
+      return res.status(404).json({ message: 'Post not found' });
+    }
+
+    post.comments = post.comments.filter(
+      comment => comment._id.toString() !== req.params.commentId
+    );
+
+    await post.save();
+
+    res.json({ message: 'Comment deleted successfully' });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
 module.exports = router;

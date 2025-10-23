@@ -45,6 +45,7 @@ import AdminDoctors from './pages/AdminDoctors';
 import AdminUsers from './pages/AdminUsers';
 import AdminHospitals from './pages/AdminHospitals';
 import AdminCourses from './pages/AdminCourses';
+import AdminForum from './pages/AdminForum';
 
 function App() {
   return (
@@ -65,6 +66,7 @@ function App() {
               <Route path="/admin/users" element={<PrivateRoute allowedRoles={['admin']}><AdminLayout><AdminUsers /></AdminLayout></PrivateRoute>} />
               <Route path="/admin/hospitals" element={<PrivateRoute allowedRoles={['admin']}><AdminLayout><AdminHospitals /></AdminLayout></PrivateRoute>} />
               <Route path="/admin/courses" element={<PrivateRoute allowedRoles={['admin']}><AdminLayout><AdminCourses /></AdminLayout></PrivateRoute>} />
+              <Route path="/admin/forum" element={<PrivateRoute allowedRoles={['admin']}><AdminLayout><AdminForum /></AdminLayout></PrivateRoute>} />
               
               {/* User Routes */}
               <Route path="/dashboard" element={<PrivateRoute allowedRoles={['patient', 'doctor', 'hospital']}><MainLayout><DashboardPage /></MainLayout></PrivateRoute>} />
