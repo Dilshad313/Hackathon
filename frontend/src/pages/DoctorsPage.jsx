@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
 import NotificationService from '../utils/notifications';
-import Navbar from '../components/common/Navbar';
 
 const DoctorsPage = () => {
   const [doctors, setDoctors] = useState([]);
@@ -75,8 +74,6 @@ const DoctorsPage = () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <Navbar title="Find a Doctor" />
-
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Search and Filters */}
         <div className="bg-white rounded-lg shadow p-6 mb-8">

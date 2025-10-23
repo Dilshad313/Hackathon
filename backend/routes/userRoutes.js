@@ -1,5 +1,5 @@
 const express = require('express');
-const { body } = require('express-validator');
+const { body, check, validationResult } = require('express-validator');
 const { auth } = require('../middleware/auth');
 const { validateRegister, validateLogin } = require('../middleware/validation');
 const User = require('../models/User');
@@ -279,6 +279,52 @@ router.get('/health', auth, async (req, res) => {
   } catch (error) {
     res.status(500).json({ message: 'Server error', error: error.message });
   }
+});
+
+// @route   POST api/users/mood
+// @desc    Add a mood entry for the user
+// @access  Private
+router.post('/mood', [auth, [
+    check('mood', 'Mood is required').not().isEmpty()
+]], async (req, res) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+        return res.status(400).json({ errors: errors.array() });
+    }
+
+    const { mood } = req.body;
+
+    try {
+        const user = await User.findById(req.user.id);
+
+        if (!user) {
+            return res.status(404).json({ msg: 'User not found' });
+        }
+
+        // Optional: Check if a mood has already been submitted for the day
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
+        const hasSubmittedToday = user.moods.some(entry => {
+            const entryDate = new Date(entry.date);
+            entryDate.setHours(0, 0, 0, 0);
+            return entryDate.getTime() === today.getTime();
+        });
+
+        if (hasSubmittedToday) {
+            return res.status(400).json({ msg: 'Mood for today has already been submitted.' });
+        }
+
+        user.moods.push({ mood });
+
+        await user.save();
+
+        res.json(user.moods);
+
+    } catch (err) {
+        console.error(err.message);
+        res.status(500).send('Server Error');
+    }
 });
 
 module.exports = router;

@@ -3,6 +3,8 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import { AuthProvider } from './context/AuthContext';
 import NotificationProvider from './components/common/NotificationProvider';
 import PrivateRoute from './components/common/PrivateRoute';
+import MainLayout from './components/common/MainLayout';
+import AdminLayout from './components/common/AdminLayout';
 
 // Import pages
 import LandingPage from './pages/LandingPage';
@@ -19,6 +21,7 @@ import ForumPage from './pages/ForumPage';
 import CoursesPage from './pages/CoursesPage';
 import ChatPage from './pages/ChatPage';
 import CabBookingPage from './pages/CabBookingPage';
+import GuidedMeditationPage from './pages/GuidedMeditationPage';
 import NotFoundPage from './pages/NotFoundPage';
 import AppointmentBooking from './pages/AppointmentBooking';
 
@@ -52,197 +55,37 @@ function App() {
               <Route path="/login" element={<LoginPage />} />
               <Route path="/register" element={<RegisterPage />} />
               
-              {/* Private Routes - Patient */}
-              <Route 
-                path="/dashboard" 
-                element={
-                  <PrivateRoute allowedRoles={['patient', 'doctor', 'hospital', 'admin']}>
-                    <DashboardPage />
-                  </PrivateRoute>
-                } 
-              />
-              <Route 
-                path="/profile" 
-                element={
-                  <PrivateRoute allowedRoles={['patient', 'doctor', 'hospital', 'admin']}>
-                    <ProfilePage />
-                  </PrivateRoute>
-                } 
-              />
-              <Route 
-                path="/doctors" 
-                element={
-                  <PrivateRoute allowedRoles={['patient', 'doctor', 'admin']}>
-                    <DoctorsPage />
-                  </PrivateRoute>
-                } 
-              />
-              <Route 
-                path="/appointments" 
-                element={
-                  <PrivateRoute allowedRoles={['patient', 'doctor', 'admin']}>
-                    <AppointmentsPage />
-                  </PrivateRoute>
-                } 
-              />
-              <Route 
-                path="/appointments/book" 
-                element={
-                  <PrivateRoute allowedRoles={['patient', 'doctor', 'admin']}>
-                    <AppointmentBooking />
-                  </PrivateRoute>
-                } 
-              />
-              <Route 
-                path="/appointments/book/:doctorId" 
-                element={
-                  <PrivateRoute allowedRoles={['patient', 'doctor', 'admin']}>
-                    <AppointmentBooking />
-                  </PrivateRoute>
-                } 
-              />
-              <Route 
-                path="/prescriptions" 
-                element={
-                  <PrivateRoute allowedRoles={['patient', 'doctor', 'admin']}>
-                    <PrescriptionsPage />
-                  </PrivateRoute>
-                } 
-              />
-              <Route 
-                path="/assessments" 
-                element={
-                  <PrivateRoute allowedRoles={['patient', 'doctor', 'admin']}>
-                    <AssessmentsPage />
-                  </PrivateRoute>
-                } 
-              />
-              <Route 
-                path="/assessments/:type/take" 
-                element={
-                  <PrivateRoute allowedRoles={['patient', 'doctor', 'admin']}>
-                    <PHQ9Assessment />
-                  </PrivateRoute>
-                } 
-              />
-              <Route 
-                path="/assessments/:id" 
-                element={
-                  <PrivateRoute allowedRoles={['patient', 'doctor', 'admin']}>
-                    <AssessmentResult />
-                  </PrivateRoute>
-                } 
-              />
-              <Route 
-                path="/journal" 
-                element={
-                  <PrivateRoute allowedRoles={['patient', 'doctor', 'admin']}>
-                    <JournalPage />
-                  </PrivateRoute>
-                } 
-              />
-              <Route 
-                path="/forum" 
-                element={
-                  <PrivateRoute allowedRoles={['patient', 'doctor', 'hospital', 'admin']}>
-                    <ForumPage />
-                  </PrivateRoute>
-                } 
-              />
-              <Route 
-                path="/courses" 
-                element={
-                  <PrivateRoute allowedRoles={['patient', 'doctor', 'admin']}>
-                    <CoursesPage />
-                  </PrivateRoute>
-                } 
-              />
-              <Route 
-                path="/chat" 
-                element={
-                  <PrivateRoute allowedRoles={['patient', 'doctor', 'admin']}>
-                    <ChatPage />
-                  </PrivateRoute>
-                } 
-              />
-              <Route 
-                path="/cab-booking" 
-                element={
-                  <PrivateRoute allowedRoles={['patient', 'doctor', 'admin']}>
-                    <CabBookingPage />
-                  </PrivateRoute>
-                } 
-              />
+              {/* Admin Routes */}
+              <Route path="/admin/dashboard" element={<PrivateRoute allowedRoles={['admin']}><AdminLayout><AdminDashboard /></AdminLayout></PrivateRoute>} />
+              <Route path="/admin/add-doctor" element={<PrivateRoute allowedRoles={['admin']}><AdminLayout><AddDoctor /></AdminLayout></PrivateRoute>} />
+              <Route path="/admin/doctors" element={<PrivateRoute allowedRoles={['admin']}><AdminLayout><AdminDoctors /></AdminLayout></PrivateRoute>} />
+              
+              {/* User Routes */}
+              <Route path="/dashboard" element={<PrivateRoute allowedRoles={['patient', 'doctor', 'hospital']}><MainLayout><DashboardPage /></MainLayout></PrivateRoute>} />
+              <Route path="/profile" element={<PrivateRoute allowedRoles={['patient', 'doctor', 'hospital']}><MainLayout><ProfilePage /></MainLayout></PrivateRoute>} />
+              <Route path="/doctors" element={<PrivateRoute allowedRoles={['patient', 'doctor', 'hospital']}><MainLayout><DoctorsPage /></MainLayout></PrivateRoute>} />
+              <Route path="/appointments" element={<PrivateRoute allowedRoles={['patient', 'doctor', 'hospital']}><MainLayout><AppointmentsPage /></MainLayout></PrivateRoute>} />
+              <Route path="/appointments/book" element={<PrivateRoute allowedRoles={['patient', 'doctor', 'hospital']}><MainLayout><AppointmentBooking /></MainLayout></PrivateRoute>} />
+              <Route path="/appointments/book/:doctorId" element={<PrivateRoute allowedRoles={['patient', 'doctor', 'hospital']}><MainLayout><AppointmentBooking /></MainLayout></PrivateRoute>} />
+              <Route path="/prescriptions" element={<PrivateRoute allowedRoles={['patient', 'doctor', 'hospital']}><MainLayout><PrescriptionsPage /></MainLayout></PrivateRoute>} />
+              <Route path="/assessments" element={<PrivateRoute allowedRoles={['patient', 'doctor', 'hospital']}><MainLayout><AssessmentsPage /></MainLayout></PrivateRoute>} />
+              <Route path="/assessments/:type/take" element={<PrivateRoute allowedRoles={['patient', 'doctor', 'hospital']}><MainLayout><PHQ9Assessment /></MainLayout></PrivateRoute>} />
+              <Route path="/assessments/:id" element={<PrivateRoute allowedRoles={['patient', 'doctor', 'hospital']}><MainLayout><AssessmentResult /></MainLayout></PrivateRoute>} />
+              <Route path="/journal" element={<PrivateRoute allowedRoles={['patient', 'doctor', 'hospital']}><MainLayout><JournalPage /></MainLayout></PrivateRoute>} />
+              <Route path="/meditation" element={<PrivateRoute allowedRoles={['patient', 'doctor', 'hospital']}><MainLayout><GuidedMeditationPage /></MainLayout></PrivateRoute>} />
+              <Route path="/forum" element={<PrivateRoute allowedRoles={['patient', 'doctor', 'hospital']}><MainLayout><ForumPage /></MainLayout></PrivateRoute>} />
+              <Route path="/courses" element={<PrivateRoute allowedRoles={['patient', 'doctor', 'hospital']}><MainLayout><CoursesPage /></MainLayout></PrivateRoute>} />
+              <Route path="/chat" element={<PrivateRoute allowedRoles={['patient', 'doctor', 'hospital']}><MainLayout><ChatPage /></MainLayout></PrivateRoute>} />
+              <Route path="/cab-booking" element={<PrivateRoute allowedRoles={['patient', 'doctor', 'hospital']}><MainLayout><CabBookingPage /></MainLayout></PrivateRoute>} />
               
               {/* Doctor Routes */}
-              <Route 
-                path="/doctor/dashboard" 
-                element={
-                  <PrivateRoute allowedRoles={['doctor', 'admin']}>
-                    <DoctorDashboard />
-                  </PrivateRoute>
-                } 
-              />
-              <Route 
-                path="/doctor/profile" 
-                element={
-                  <PrivateRoute allowedRoles={['doctor', 'admin']}>
-                    <DoctorProfile />
-                  </PrivateRoute>
-                } 
-              />
-              <Route 
-                path="/doctor/appointments" 
-                element={
-                  <PrivateRoute allowedRoles={['doctor', 'admin']}>
-                    <DoctorAppointments />
-                  </PrivateRoute>
-                } 
-              />
+              <Route path="/doctor/dashboard" element={<PrivateRoute allowedRoles={['doctor']}><MainLayout><DoctorDashboard /></MainLayout></PrivateRoute>} />
+              <Route path="/doctor/profile" element={<PrivateRoute allowedRoles={['doctor']}><MainLayout><DoctorProfile /></MainLayout></PrivateRoute>} />
+              <Route path="/doctor/appointments" element={<PrivateRoute allowedRoles={['doctor']}><MainLayout><DoctorAppointments /></MainLayout></PrivateRoute>} />
               
               {/* Hospital Routes */}
-              <Route 
-                path="/hospital/dashboard" 
-                element={
-                  <PrivateRoute allowedRoles={['hospital', 'admin']}>
-                    <HospitalDashboard />
-                  </PrivateRoute>
-                } 
-              />
-              <Route 
-                path="/hospital/profile" 
-                element={
-                  <PrivateRoute allowedRoles={['hospital', 'admin']}>
-                    <HospitalProfile />
-                  </PrivateRoute>
-                } 
-              />
-              
-              {/* Admin Routes */}
-              <Route 
-                path="/admin/dashboard" 
-                element={
-                  <PrivateRoute allowedRoles={['admin']}>
-                    <AdminDashboard />
-                  </PrivateRoute>
-                } 
-              />
-              <Route 
-                path="/admin/add-doctor" 
-                element={
-                  <PrivateRoute allowedRoles={['admin']}>
-                    <AddDoctor />
-                  </PrivateRoute>
-                } 
-              />
-              <Route 
-                path="/admin/doctors" 
-                element={
-                  <PrivateRoute allowedRoles={['admin']}>
-                    <AdminDoctors />
-                  </PrivateRoute>
-                } 
-              />
+              <Route path="/hospital/dashboard" element={<PrivateRoute allowedRoles={['hospital']}><MainLayout><HospitalDashboard /></MainLayout></PrivateRoute>} />
+              <Route path="/hospital/profile" element={<PrivateRoute allowedRoles={['hospital']}><MainLayout><HospitalProfile /></MainLayout></PrivateRoute>} />
               
               {/* 404 Route */}
               <Route path="*" element={<NotFoundPage />} />

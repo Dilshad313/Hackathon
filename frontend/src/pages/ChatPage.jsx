@@ -2,7 +2,6 @@ import React, { useState, useEffect, useRef } from 'react';
 import api from '../services/api';
 import NotificationService from '../utils/notifications';
 import { useAuth } from '../context/AuthContext';
-import Navbar from '../components/common/Navbar';
 
 const ChatPage = () => {
   const { logout } = useAuth();
@@ -124,7 +123,6 @@ const ChatPage = () => {
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
-      <Navbar title="AI Support Chat" />
 
       {/* Bot Selection Bar */}
       <div className="bg-white border-b border-gray-200">

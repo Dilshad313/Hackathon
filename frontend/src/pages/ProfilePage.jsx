@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
 import NotificationService from '../utils/notifications';
-import Navbar from '../components/common/Navbar';
 
 const ProfilePage = () => {
   const { user, updateUserProfile, logout } = useAuth();
@@ -146,8 +145,6 @@ const ProfilePage = () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <Navbar title="Profile Settings" />
-
       <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <form onSubmit={onSubmit} className="space-y-8">
           {/* Personal Information */}

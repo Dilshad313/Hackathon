@@ -9,6 +9,12 @@ const userSchema = new mongoose.Schema({
     trim: true,
     lowercase: true
   },
+  moods: [
+    {
+      mood: { type: String, required: true },
+      date: { type: Date, default: Date.now },
+    },
+  ],
   username: {
     type: String,
     required: true,
