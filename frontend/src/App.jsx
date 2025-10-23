@@ -18,6 +18,7 @@ import PrescriptionsPage from './pages/PrescriptionsPage';
 import AssessmentsPage from './pages/AssessmentsPage';
 import JournalPage from './pages/JournalPage';
 import ForumPage from './pages/ForumPage';
+import CreateForumPost from './pages/CreateForumPost';
 import CoursesPage from './pages/CoursesPage';
 import ChatPage from './pages/ChatPage';
 import CabBookingPage from './pages/CabBookingPage';
@@ -82,6 +83,7 @@ function App() {
               <Route path="/journal" element={<PrivateRoute allowedRoles={['patient', 'doctor', 'hospital']}><MainLayout><JournalPage /></MainLayout></PrivateRoute>} />
               <Route path="/meditation" element={<PrivateRoute allowedRoles={['patient', 'doctor', 'hospital']}><MainLayout><GuidedMeditationPage /></MainLayout></PrivateRoute>} />
               <Route path="/forum" element={<PrivateRoute allowedRoles={['patient', 'doctor', 'hospital']}><MainLayout><ForumPage /></MainLayout></PrivateRoute>} />
+              <Route path="/forum/new" element={<PrivateRoute allowedRoles={['patient', 'doctor', 'hospital']}><MainLayout><CreateForumPost /></MainLayout></PrivateRoute>} />
               <Route path="/courses" element={<PrivateRoute allowedRoles={['patient', 'doctor', 'hospital']}><MainLayout><CoursesPage /></MainLayout></PrivateRoute>} />
               <Route path="/chat" element={<PrivateRoute allowedRoles={['patient', 'doctor', 'hospital']}><MainLayout><ChatPage /></MainLayout></PrivateRoute>} />
               <Route path="/cab-booking" element={<PrivateRoute allowedRoles={['patient', 'doctor', 'hospital']}><MainLayout><CabBookingPage /></MainLayout></PrivateRoute>} />
