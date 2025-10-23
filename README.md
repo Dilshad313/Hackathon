@@ -120,7 +120,7 @@ SoulSync/
 
 3. Create a `.env` file in the frontend directory with the following variable:
    ```
-   REACT_APP_API_URL=http://localhost:5000/api
+   BACKEND_URL=http://localhost:5000/api
    ```
 
 4. Start the development server:
@@ -201,7 +201,7 @@ GEMINI_API_KEY=your_google_ai_studio_key
 
 ### Frontend (.env)
 ```
-REACT_APP_API_URL=http://localhost:5000/api
+BACKEND_URL=http://localhost:5000/api
 ```
 
 ## Deployment

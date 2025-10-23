@@ -195,21 +195,34 @@ const AdminDashboard = () => {
               <p className="text-gray-500">No recent appointments</p>
             ) : (
               <div className="space-y-3">
-                {recentAppointments.map(appointment => (
-                  <div key={appointment._id} className="flex justify-between items-center border-b border-gray-200 pb-2">
-                    <div>
-                      <h3 className="font-medium text-gray-900">
-                        {appointment.patientId?.firstName} {appointment.patientId?.lastName}
-                      </h3>
-                      <p className="text-sm text-gray-600">
-                        Dr. {appointment.doctorId?.userId?.firstName} {appointment.doctorId?.userId?.lastName}
-                      </p>
+                {recentAppointments.map(appointment => {
+                  // Handle different possible data structures for doctor name
+                  const doctorName = appointment.doctorId?.userId?.firstName 
+                    ? `Dr. ${appointment.doctorId.userId.firstName} ${appointment.doctorId.userId.lastName || ''}`
+                    : appointment.doctorId?.firstName
+                    ? `Dr. ${appointment.doctorId.firstName} ${appointment.doctorId.lastName || ''}`
+                    : 'Doctor';
+                  
+                  const patientName = appointment.patientId?.firstName
+                    ? `${appointment.patientId.firstName} ${appointment.patientId.lastName || ''}`
+                    : appointment.patientId?.username || 'Patient';
+
+                  return (
+                    <div key={appointment._id} className="flex justify-between items-center border-b border-gray-200 pb-2">
+                      <div>
+                        <h3 className="font-medium text-gray-900">
+                          {patientName}
+                        </h3>
+                        <p className="text-sm text-gray-600">
+                          {doctorName}
+                        </p>
+                      </div>
+                      <span className="text-sm text-gray-500">
+                        {new Date(appointment.createdAt).toLocaleDateString()}
+                      </span>
                     </div>
-                    <span className="text-sm text-gray-500">
-                      {new Date(appointment.createdAt).toLocaleDateString()}
-                    </span>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>

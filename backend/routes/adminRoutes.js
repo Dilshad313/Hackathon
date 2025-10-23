@@ -56,8 +56,14 @@ router.get('/dashboard', adminAuth, async (req, res) => {
       .select('specialization adminApprovalStatus createdAt');
 
     const recentAppointments = await Appointment.find()
-      .populate('patientId', 'username email')
-      .populate('doctorId')
+      .populate('patientId', 'username email firstName lastName')
+      .populate({
+        path: 'doctorId',
+        populate: {
+          path: 'userId',
+          select: 'firstName lastName username email'
+        }
+      })
       .sort({ createdAt: -1 })
       .limit(5);
 
