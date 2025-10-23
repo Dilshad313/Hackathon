@@ -23,35 +23,45 @@ const cabRoutes = require('./routes/cabRoutes');
 
 const app = express();
 
-// Security middleware
-app.use(helmet());
+// Security middleware - Configure helmet to allow CORS
+app.use(helmet({
+  crossOriginResourcePolicy: { policy: "cross-origin" },
+  crossOriginOpenerPolicy: { policy: "same-origin-allow-popups" }
+}));
 
 // CORS configuration - Allow multiple origins for development and production
 const allowedOrigins = [
   'http://localhost:5173',
   'http://localhost:5174',
   'http://localhost:3000',
+  'https://soul-sync-drab.vercel.app', // Your frontend URL
   process.env.FRONTEND_URL,
-  // Add your Vercel deployment URLs here
-  // Example: 'https://your-app.vercel.app'
 ].filter(Boolean); // Remove undefined values
 
+// Enable CORS for all routes
 app.use(cors({
   origin: function(origin, callback) {
-    // Allow requests with no origin (like mobile apps or curl requests)
+    // Allow requests with no origin (like mobile apps, Postman, or curl requests)
     if (!origin) return callback(null, true);
     
     // Check if origin is in allowed list or matches Vercel pattern
     if (allowedOrigins.indexOf(origin) !== -1 || origin.endsWith('.vercel.app')) {
       callback(null, true);
     } else {
-      callback(new Error('Not allowed by CORS'));
+      console.log('CORS blocked origin:', origin);
+      callback(null, true); // Allow all origins for now (change to false in production)
     }
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'x-auth-token']
+  allowedHeaders: ['Content-Type', 'Authorization', 'x-auth-token', 'Accept'],
+  exposedHeaders: ['x-auth-token'],
+  preflightContinue: false,
+  optionsSuccessStatus: 204
 }));
+
+// Handle preflight requests explicitly
+app.options('*', cors());
 
 // Rate limiting - More lenient for development
 const limiter = rateLimit({

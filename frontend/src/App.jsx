@@ -43,6 +43,8 @@ import AdminDashboard from './pages/AdminDashboard';
 import AddDoctor from './pages/AddDoctor';
 import AdminDoctors from './pages/AdminDoctors';
 import AdminUsers from './pages/AdminUsers';
+import AdminHospitals from './pages/AdminHospitals';
+import AdminCourses from './pages/AdminCourses';
 
 function App() {
   return (
@@ -61,6 +63,8 @@ function App() {
               <Route path="/admin/add-doctor" element={<PrivateRoute allowedRoles={['admin']}><AdminLayout><AddDoctor /></AdminLayout></PrivateRoute>} />
               <Route path="/admin/doctors" element={<PrivateRoute allowedRoles={['admin']}><AdminLayout><AdminDoctors /></AdminLayout></PrivateRoute>} />
               <Route path="/admin/users" element={<PrivateRoute allowedRoles={['admin']}><AdminLayout><AdminUsers /></AdminLayout></PrivateRoute>} />
+              <Route path="/admin/hospitals" element={<PrivateRoute allowedRoles={['admin']}><AdminLayout><AdminHospitals /></AdminLayout></PrivateRoute>} />
+              <Route path="/admin/courses" element={<PrivateRoute allowedRoles={['admin']}><AdminLayout><AdminCourses /></AdminLayout></PrivateRoute>} />
               
               {/* User Routes */}
               <Route path="/dashboard" element={<PrivateRoute allowedRoles={['patient', 'doctor', 'hospital']}><MainLayout><DashboardPage /></MainLayout></PrivateRoute>} />

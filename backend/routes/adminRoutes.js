@@ -546,6 +546,75 @@ router.put('/doctors/:id/approve', adminAuth, async (req, res) => {
   }
 });
 
+// @route   POST api/admin/hospitals/add
+// @desc    Add a new hospital
+// @access  Private - Admin
+router.post('/hospitals/add', adminAuth, async (req, res) => {
+  try {
+    const { name, email, password, phone, address, city, state, pincode, description } = req.body;
+
+    // Validation
+    if (!name || !email || !phone) {
+      return res.status(400).json({ message: 'Please provide name, email, and phone' });
+    }
+
+    // Check if hospital email already exists
+    const existingHospital = await Hospital.findOne({ email });
+    if (existingHospital) {
+      return res.status(400).json({ message: 'Hospital with this email already exists' });
+    }
+
+    // Create hospital profile with proper schema structure
+    const hospital = new Hospital({
+      name,
+      email,
+      phone,
+      address: {
+        street: address || 'Not provided',
+        city: city || 'Not provided',
+        state: state || 'Not provided',
+        zipCode: pincode || '000000',
+        country: 'India'
+      },
+      location: {
+        type: 'Point',
+        coordinates: [0, 0] // Default coordinates, can be updated later
+      },
+      description: description || '',
+      adminApprovalStatus: 'approved', // Auto-approve admin-added hospitals
+      approvalDate: new Date()
+    });
+    await hospital.save();
+
+    // Optionally create user account for hospital login (if needed)
+    if (password) {
+      try {
+        const existingUser = await User.findOne({ email });
+        if (!existingUser) {
+          const user = new User({
+            username: email.split('@')[0] + '_hospital',
+            email,
+            password,
+            role: 'hospital',
+            isActive: true
+          });
+          await user.save();
+        }
+      } catch (userError) {
+        console.log('User creation skipped:', userError.message);
+      }
+    }
+
+    res.status(201).json({ 
+      message: 'Hospital added successfully', 
+      hospital 
+    });
+  } catch (error) {
+    console.error('Add hospital error:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
 // @route   GET api/admin/hospitals
 // @desc    Get all hospitals (pending approval)
 // @access  Private - Admin
@@ -567,6 +636,7 @@ router.get('/hospitals', adminAuth, async (req, res) => {
       total
     });
   } catch (error) {
+    console.error('Get hospitals error:', error);
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 });
@@ -595,6 +665,92 @@ router.put('/hospitals/:id/approve', adminAuth, async (req, res) => {
 
     res.json({ message: `Hospital ${status}`, hospital });
   } catch (error) {
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+// @route   POST api/admin/courses/add
+// @desc    Add a new course
+// @access  Private - Admin
+router.post('/courses/add', adminAuth, async (req, res) => {
+  try {
+    const { title, description, category, duration, level, price, thumbnail } = req.body;
+
+    // Validation
+    if (!title || !description || !category) {
+      return res.status(400).json({ message: 'Please provide title, description, and category' });
+    }
+
+    // Get admin user info
+    const adminUser = await User.findById(req.user.id);
+    const instructorName = adminUser ? `${adminUser.firstName || 'Admin'} ${adminUser.lastName || ''}`.trim() : 'Admin';
+
+    // Map frontend category to backend enum
+    const categoryMap = {
+      'Stress Management': 'stress-management',
+      'Anxiety Relief': 'anxiety',
+      'Depression Support': 'depression',
+      'Mindfulness': 'mindfulness',
+      'Meditation': 'mindfulness',
+      'Sleep Improvement': 'sleep',
+      'Relationship Skills': 'relationships',
+      'Self-Esteem': 'self-care',
+      'Anger Management': 'anger-management',
+      'Trauma Recovery': 'trauma-recovery'
+    };
+
+    const mappedCategory = categoryMap[category] || 'general-wellness';
+
+    // Parse duration string to minutes (e.g., "4 weeks" -> 240 minutes estimate)
+    let durationMinutes = 60; // default 1 hour
+    if (duration) {
+      const durationStr = duration.toLowerCase();
+      if (durationStr.includes('week')) {
+        const weeks = parseInt(durationStr) || 1;
+        durationMinutes = weeks * 60; // 1 hour per week
+      } else if (durationStr.includes('hour')) {
+        durationMinutes = parseInt(durationStr) * 60 || 60;
+      } else if (durationStr.includes('min')) {
+        durationMinutes = parseInt(durationStr) || 60;
+      }
+    }
+
+    // Create course with admin as instructor
+    const course = new Course({
+      title,
+      description,
+      category: mappedCategory,
+      duration: durationMinutes,
+      level: (level || 'Beginner').toLowerCase(),
+      thumbnail: thumbnail || '',
+      instructorId: req.user.id,
+      instructorName,
+      modules: [
+        {
+          title: 'Introduction',
+          description: 'Course introduction',
+          content: 'Welcome to this course!',
+          order: 1,
+          duration: 10
+        }
+      ],
+      isFree: !price || price === 0,
+      price: {
+        amount: price || 0,
+        currency: 'INR'
+      },
+      adminApprovalStatus: 'approved', // Auto-approve admin-added courses
+      isPublished: true
+    });
+
+    await course.save();
+
+    res.status(201).json({ 
+      message: 'Course added successfully', 
+      course 
+    });
+  } catch (error) {
+    console.error('Add course error:', error);
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 });

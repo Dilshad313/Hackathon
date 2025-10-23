@@ -439,7 +439,7 @@ const AdminCourses = () => {
                       required
                       min="0"
                       value={newCourse.price}
-                      onChange={(e) => setNewCourse({ ...newCourse, price: parseInt(e.target.value) })}
+                      onChange={(e) => setNewCourse({ ...newCourse, price: e.target.value === '' ? 0 : parseInt(e.target.value) || 0 })}
                       className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-300"
                       placeholder="0 for free"
                     />

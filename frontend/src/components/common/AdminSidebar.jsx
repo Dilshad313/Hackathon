@@ -47,9 +47,7 @@ const AdminSidebar = () => {
         </ul>
       </nav>
       <div className="p-4 border-t border-gray-700">
-        <Link to="/dashboard" className="block w-full text-center bg-gray-700 hover:bg-gray-600 text-white px-4 py-2 rounded-lg font-medium transition-colors duration-300 mb-4">
-          Back to Main Site
-        </Link>
+        
         <button 
           onClick={handleLogout}
           className="w-full bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg font-medium transition-colors duration-300">

@@ -234,7 +234,7 @@ const AdminHospitals = () => {
                   <div className="space-y-2 mb-4">
                     <div className="flex items-center gap-2 text-sm text-gray-600">
                       <Mail className="w-4 h-4" />
-                      <span className="truncate">{hospital.userId?.email || 'N/A'}</span>
+                      <span className="truncate">{hospital.email || hospital.userId?.email || 'N/A'}</span>
                     </div>
                     <div className="flex items-center gap-2 text-sm text-gray-600">
                       <Phone className="w-4 h-4" />
@@ -242,7 +242,9 @@ const AdminHospitals = () => {
                     </div>
                     <div className="flex items-center gap-2 text-sm text-gray-600">
                       <MapPin className="w-4 h-4" />
-                      <span className="truncate">{hospital.city}, {hospital.state}</span>
+                      <span className="truncate">
+                        {hospital.address?.city || hospital.city || 'N/A'}, {hospital.address?.state || hospital.state || 'N/A'}
+                      </span>
                     </div>
                   </div>
 
@@ -525,7 +527,7 @@ const AdminHospitals = () => {
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="text-sm font-semibold text-gray-600">Email</label>
-                    <p className="text-gray-900">{selectedHospital.userId?.email || 'N/A'}</p>
+                    <p className="text-gray-900">{selectedHospital.email || selectedHospital.userId?.email || 'N/A'}</p>
                   </div>
                   <div>
                     <label className="text-sm font-semibold text-gray-600">Phone</label>
@@ -535,7 +537,9 @@ const AdminHospitals = () => {
                 <div>
                   <label className="text-sm font-semibold text-gray-600">Address</label>
                   <p className="text-gray-900">
-                    {selectedHospital.address}, {selectedHospital.city}, {selectedHospital.state}
+                    {selectedHospital.address?.street || selectedHospital.address || 'N/A'}, {' '}
+                    {selectedHospital.address?.city || selectedHospital.city || 'N/A'}, {' '}
+                    {selectedHospital.address?.state || selectedHospital.state || 'N/A'}
                   </p>
                 </div>
                 <div>
