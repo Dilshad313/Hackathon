@@ -123,13 +123,13 @@ app.use('*', (req, res) => {
 const PORT = process.env.PORT || 5000;
 
 // Connect to MongoDB and start server
-mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/mindsync')
+mongoose.connect(process.env.MONGODB_URI || 'mongodb+srv://dilud279:Dilshad786@cluster0.jd0la.mongodb.net/soulsync')
   .then(() => {
     console.log('Connected to MongoDB');
     app.listen(PORT, () => {
       console.log(`Server running on port ${PORT}`);
       console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
-      console.log(`Frontend URL: ${process.env.FRONTEND_URL || 'http://localhost:5173'}`);
+      console.log(`Frontend URL: ${process.env.FRONTEND_URL || 'https://soul-sync-drab.vercel.app/'}`);
     });
   })
   .catch(err => {
