@@ -76,7 +76,21 @@ const AuthProvider = ({ children }) => {
         try {
           // Set the token in API headers
           api.setAuthToken(token);
-          const response = await api.get('/users/profile');
+          
+          // Try admin profile first, then fall back to user profile
+          let response;
+          try {
+            response = await api.get('/admin/auth/profile');
+            // Mark as admin
+            response.data.type = 'admin';
+            if (!response.data.role || response.data.role === 'super-admin') {
+              response.data.role = 'admin';
+            }
+          } catch (adminError) {
+            // If admin profile fails, try user profile
+            response = await api.get('/users/profile');
+          }
+          
           dispatch({
             type: 'LOGIN_SUCCESS',
             payload: { user: response.data, token }
@@ -96,11 +110,26 @@ const AuthProvider = ({ children }) => {
     checkAuthStatus();
   }, []);
 
-  const login = async (email, password) => {
+  const login = async (email, password, isAdmin = false) => {
     dispatch({ type: 'LOGIN_START' });
     try {
-      const response = await api.post('/users/login', { email, password });
-      const { token, user } = response.data;
+      // Use different endpoint for admin login
+      const endpoint = isAdmin ? '/admin/auth/login' : '/users/login';
+      const response = await api.post(endpoint, { email, password });
+      
+      // Handle different response structures
+      const token = response.data.token;
+      const user = response.data.user || response.data.admin;
+      
+      // If admin, mark the user object
+      if (isAdmin || response.data.admin) {
+        user.type = 'admin';
+        user.role = user.role || 'admin';
+      }
+      
+      console.log('Login successful, user data:', user);
+      console.log('User role:', user.role);
+      console.log('User type:', user.type);
       
       localStorage.setItem('token', token);
       api.setAuthToken(token);

@@ -19,6 +19,7 @@ const courseRoutes = require('./routes/courseRoutes');
 const notificationRoutes = require('./routes/notificationRoutes');
 const aiRoutes = require('./routes/aiRoutes');
 const adminRoutes = require('./routes/adminRoutes');
+const adminAuthRoutes = require('./routes/adminAuthRoutes');
 const cabRoutes = require('./routes/cabRoutes');
 
 const app = express();
@@ -93,7 +94,8 @@ app.use('/api/forum', forumRoutes);
 app.use('/api/courses', courseRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/ai', aiRoutes);
-app.use('/api/admin', adminRoutes);
+app.use('/api/admin/auth', adminAuthRoutes); // Admin authentication routes (separate)
+app.use('/api/admin', adminRoutes); // Admin management routes
 app.use('/api/cab', cabRoutes);
 
 // Health check endpoint
@@ -104,6 +106,29 @@ app.get('/health', (req, res) => {
     uptime: process.uptime(),
     memory: process.memoryUsage()
   });
+});
+
+// Admin status check endpoint (for debugging)
+app.get('/api/admin/auth/status', async (req, res) => {
+  try {
+    const Admin = require('./models/Admin');
+    const adminEmail = process.env.ADMIN_EMAIL || 'admin@gmail.com';
+    const admin = await Admin.findOne({ email: adminEmail });
+    
+    res.json({
+      adminExists: !!admin,
+      adminEmail: adminEmail,
+      message: admin ? 'Admin exists in database' : 'Admin does not exist. Call POST /api/admin/auth/init to create.',
+      admin: admin ? {
+        email: admin.email,
+        username: admin.username,
+        role: admin.role,
+        isActive: admin.isActive
+      } : null
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
 });
 
 // Error handling middleware

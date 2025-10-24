@@ -25,12 +25,15 @@ const LoginPage = () => {
     setLoading(true);
 
     try {
-      const result = await login(formData.email, formData.password);
+      // Check if this is an admin login (admin@gmail.com or contains 'admin')
+      const isAdminLogin = formData.email.toLowerCase().includes('admin');
+      
+      const result = await login(formData.email, formData.password, isAdminLogin);
       if (result.success) {
         NotificationService.success('Login successful! Welcome back!');
         // Redirect based on user role after a short delay to show toast
         setTimeout(() => {
-          if (result.user.role === 'admin') {
+          if (result.user.type === 'admin' || result.user.role === 'admin' || result.user.role === 'super-admin') {
             navigate('/admin/dashboard');
           } else if (result.user.role === 'doctor') {
             navigate('/doctor/dashboard');

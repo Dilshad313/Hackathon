@@ -7,9 +7,11 @@
     "dev": "nodemon server.js",
     "test": "jest",
     "seed:admin": "node scripts/seedAdmin.js",
+    "seed:admin-collection": "node scripts/seedAdminCollection.js",
     "verify:admin": "node scripts/verifyAdmin.js",
     "test:admin": "node scripts/testAdminLogin.js",
-    "test:doctors": "node scripts/testDoctorManagement.js"
+    "test:doctors": "node scripts/testDoctorManagement.js",
+    "fix:admin": "node scripts/fixAdminLogin.js"
   },
   "keywords": [
     "mental-health",

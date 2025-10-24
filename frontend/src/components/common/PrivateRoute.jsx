@@ -28,9 +28,43 @@ const PrivateRoute = ({ children, allowedRoles = [] }) => {
   }
 
   // Check if user's role is in allowed roles
-  if (allowedRoles.length > 0 && !allowedRoles.includes(user?.role)) {
-    // Redirect to dashboard if not authorized
-    return <Navigate to="/dashboard" replace />;
+  if (allowedRoles.length > 0) {
+    const userRole = user?.role;
+    const userType = user?.type;
+    
+    console.log('PrivateRoute check:', {
+      userRole,
+      userType,
+      allowedRoles,
+      user
+    });
+    
+    // Check if user is admin (handle both 'admin' and 'super-admin' roles, and type='admin')
+    const isAdmin = userRole === 'admin' || userRole === 'super-admin' || 
+                    userRole === 'moderator' || userRole === 'content-manager' || 
+                    userRole === 'support-agent' || userType === 'admin';
+    
+    console.log('Is admin?', isAdmin);
+    
+    // If route requires admin and user is admin, allow access
+    if (allowedRoles.includes('admin') && isAdmin) {
+      console.log('✅ Admin access granted');
+      return children;
+    }
+    
+    // Otherwise check if user's role is in allowed roles
+    if (!allowedRoles.includes(userRole)) {
+      // Redirect based on user type
+      if (isAdmin) {
+        return <Navigate to="/admin/dashboard" replace />;
+      } else if (userRole === 'doctor') {
+        return <Navigate to="/doctor/dashboard" replace />;
+      } else if (userRole === 'hospital') {
+        return <Navigate to="/hospital/dashboard" replace />;
+      } else {
+        return <Navigate to="/dashboard" replace />;
+      }
+    }
   }
 
   return children;
